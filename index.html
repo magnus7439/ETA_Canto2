@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETA Canto - Prof Roberto</title>
+    <title>ETA Canto - App Edition</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -25,7 +25,6 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.6);
         }
 
-        /* PLAYER PRINCIPAL */
         .master-player {
             position: sticky; top: 10px; width: 95%; max-width: 600px;
             padding: 15px; z-index: 100; text-align: center; margin-bottom: 10px;
@@ -46,7 +45,6 @@
             display: flex; align-items: center; justify-content: center; font-weight: bold;
         }
 
-        /* CONTROLES FLUTUANTES */
         .floating-controls {
             position: fixed; bottom: 20px; left: 50%;
             transform: translateX(-50%); display: none; 
@@ -56,25 +54,21 @@
             flex: 1; padding: 15px 5px; border-radius: 12px; font-weight: bold;
             font-size: 0.9em; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(8px); color: white; text-transform: uppercase;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
         .btn-stop { background: rgba(220, 20, 20, 0.8); }
         .btn-pause { background: rgba(20, 80, 220, 0.8); }
         .btn-restart { background: rgba(200, 160, 20, 0.8); color: #000; }
 
-        /* SELETOR DE ABA */
         .list-selector-container { width: 95%; max-width: 600px; margin-bottom: 10px; display: flex; gap: 5px; }
         #sheet-selector {
             flex: 1; padding: 12px; border-radius: 25px; background: rgba(100, 50, 150, 0.6);
             color: #ff4; border: 1px solid rgba(255, 255, 255, 0.3); font-weight: bold; outline: none;
-            cursor: pointer;
         }
         .btn-reset-order {
             background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2);
             color: #fff; border-radius: 25px; padding: 0 15px; cursor: pointer; font-size: 0.8em;
         }
 
-        /* BUSCA */
         .search-container { width: 95%; max-width: 600px; margin-bottom: 20px; position: relative; }
         #search-input {
             width: 100%; padding: 12px 45px 12px 20px; border-radius: 25px;
@@ -86,7 +80,6 @@
             border: none; color: #ff4; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: none;
         }
 
-        /* LISTA */
         ul { list-style: none; padding: 0; width: 95%; max-width: 700px; min-height: 100px; }
         li { margin: 12px 0; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
         
@@ -149,7 +142,14 @@
         const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUwdgFWo3-RvINecYfmj0aMZBEKTeGjMkUoJrq-QvwzFTzKRU3XiMCQkDgxsNRtxMha2bTeirKvD8N/pub?output=csv';
         let GID_ATUAL = '1960210650';
 
-        // --- PERSISTÊNCIA ---
+        // Evita erro se o LocalStorage estiver bloqueado no WebView
+        function safeGetLocal(key) {
+            try { return localStorage.getItem(key); } catch(e) { return null; }
+        }
+        function safeSetLocal(key, value) {
+            try { localStorage.setItem(key, value); } catch(e) { }
+        }
+
         function salvarEstadoLocal() {
             const itens = [];
             document.querySelectorAll('#playlist-sortable li').forEach(li => {
@@ -158,22 +158,14 @@
                     done: li.querySelector('.chk-done')?.checked || false
                 });
             });
-            localStorage.setItem('ordem_' + GID_ATUAL, JSON.stringify(itens));
+            safeSetLocal('ordem_' + GID_ATUAL, JSON.stringify(itens));
         }
 
         function resetarOrdemLocal() {
-            if(confirm("Deseja voltar para a ordem original da planilha? Isso limpará suas marcações e organização manual deste dia.")) {
-                localStorage.removeItem('ordem_' + GID_ATUAL);
+            if(confirm("Voltar para a ordem original?")) {
+                try { localStorage.removeItem('ordem_' + GID_ATUAL); } catch(e) {}
                 carregar();
             }
-        }
-
-        // --- FUNÇÕES DE CONTROLE DE MÍDIA ---
-        function togglePlayer() {
-            const container = document.getElementById('main-player-container');
-            const btn = document.getElementById('btn-toggle');
-            const isMin = container.classList.toggle('player-minimized');
-            btn.innerText = isMin ? '▼' : '✕';
         }
 
         function stopAll() {
@@ -189,13 +181,8 @@
             const audio = document.getElementById('audio-player');
             const btn = document.getElementById('btn-pause-float');
             if (audio.style.display !== 'none') {
-                if (audio.paused) { 
-                    audio.play(); 
-                    btn.innerText = "⏸ Pausar"; 
-                } else { 
-                    audio.pause(); 
-                    btn.innerText = "▶ Play"; 
-                }
+                if (audio.paused) { audio.play(); btn.innerText = "⏸ Pausar"; }
+                else { audio.pause(); btn.innerText = "▶ Play"; }
             }
         }
 
@@ -210,9 +197,12 @@
             }
         }
 
-        function mudarLista(novoGid) {
-            GID_ATUAL = novoGid;
-            carregar();
+        function mudarLista(novoGid) { GID_ATUAL = novoGid; carregar(); }
+
+        function togglePlayer() {
+            const container = document.getElementById('main-player-container');
+            const isMin = container.classList.toggle('player-minimized');
+            document.getElementById('btn-toggle').innerText = isMin ? '▼' : '✕';
         }
 
         function filtrarLista() {
@@ -220,100 +210,98 @@
             const termo = input.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
             document.getElementById('btn-clear').style.display = input.value ? "block" : "none";
             document.querySelectorAll('#playlist-sortable li').forEach(li => {
-                if (li.classList.contains('is-separator')) {
-                    li.style.display = termo === "" ? "flex" : "none";
-                } else {
-                    const txt = li.innerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-                    li.style.display = txt.includes(termo) ? "flex" : "none";
-                }
+                const txt = li.innerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                li.style.display = txt.includes(termo) ? (li.classList.contains('is-separator') && termo !== "" ? "none" : "flex") : "none";
             });
         }
 
-        function limparBusca() {
-            document.getElementById('search-input').value = '';
-            filtrarLista();
-        }
+        function limparBusca() { document.getElementById('search-input').value = ''; filtrarLista(); }
 
-        // --- CARREGAMENTO ---
-        async function carregar() {
+        // --- CARREGAMENTO OTIMIZADO PARA WEBVIEW ---
+        function carregar() {
             const lista = document.getElementById('playlist-sortable');
             lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
             
-            try {
-                const r = await fetch(`${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`);
-                const texto = await r.text();
-                const linhas = texto.split('\n').map(l => l.trim()).filter(l => l);
-                
-                let dadosMap = {};
-                linhas.slice(1).forEach((linha, index) => {
-                    const cols = linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    const id = cols[0]?.replace(/"/g, '') || ('item-'+index);
-                    dadosMap[id] = {
-                        id: id,
-                        cantor: cols[1]?.replace(/"/g, '') || '',
-                        musica: cols[2]?.replace(/"/g, '') || '',
-                        media: cols[3]?.replace(/"/g, '').trim() || '',
-                        tipo: (cols[4]?.replace(/"/g, '') || '').toLowerCase().trim(),
-                        notas: cols[5]?.replace(/"/g, '') || ''
-                    };
-                });
+            const xhr = new XMLHttpRequest();
+            // Adiciona timestamp para evitar cache do componente WebViewer
+            const fullUrl = `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`;
+            
+            xhr.open("GET", fullUrl, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        renderizar(xhr.responseText);
+                    } else {
+                        lista.innerHTML = `<p style="text-align:center; color: #ff4;">Erro de conexão. Verifique a internet.</p>`;
+                    }
+                }
+            };
+            xhr.send();
+        }
 
-                const salva = localStorage.getItem('ordem_' + GID_ATUAL);
-                let idsOrdenados = Object.keys(dadosMap);
-                let estadosCheck = {};
+        function renderizar(texto) {
+            const lista = document.getElementById('playlist-sortable');
+            const linhas = texto.split('\n').map(l => l.trim()).filter(l => l);
+            
+            let dadosMap = {};
+            linhas.slice(1).forEach((linha, index) => {
+                const cols = linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const id = cols[0]?.replace(/"/g, '') || ('item-'+index);
+                dadosMap[id] = {
+                    id: id, cantor: cols[1]?.replace(/"/g, '') || '',
+                    musica: cols[2]?.replace(/"/g, '') || '',
+                    media: cols[3]?.replace(/"/g, '').trim() || '',
+                    tipo: (cols[4]?.replace(/"/g, '') || '').toLowerCase().trim(),
+                    notas: cols[5]?.replace(/"/g, '') || ''
+                };
+            });
 
-                if (salva) {
+            const salva = safeGetLocal('ordem_' + GID_ATUAL);
+            let idsOrdenados = Object.keys(dadosMap);
+            let estadosCheck = {};
+
+            if (salva) {
+                try {
                     const objSalvo = JSON.parse(salva);
                     idsOrdenados = objSalvo.map(s => s.id).filter(id => dadosMap[id]);
-                    Object.keys(dadosMap).forEach(id => {
-                        if (!idsOrdenados.includes(id)) idsOrdenados.push(id);
-                    });
+                    Object.keys(dadosMap).forEach(id => { if (!idsOrdenados.includes(id)) idsOrdenados.push(id); });
                     objSalvo.forEach(s => estadosCheck[s.id] = s.done);
-                }
-
-                lista.innerHTML = '';
-                idsOrdenados.forEach(id => {
-                    const item = dadosMap[id];
-                    if (!item.musica) return;
-
-                    const li = document.createElement('li');
-                    li.className = 'glass-panel';
-                    li.dataset.id = item.id;
-                    
-                    if (item.tipo === 'separador') {
-                        li.classList.add('is-separator');
-                        li.innerHTML = `<div class="separator-content"><div class="drag-handle">⋮⋮</div><div class="separator-title">${item.musica}</div></div>`;
-                    } else {
-                        const temMidia = item.media && item.media.length > 5;
-                        const isDone = estadosCheck[item.id] || false;
-                        if(isDone) li.classList.add('done');
-
-                        li.innerHTML = `
-                            <div class="li-main-row">
-                                <div class="drag-handle">⋮⋮</div>
-                                <input type="checkbox" class="chk-done" ${isDone ? 'checked' : ''} onchange="this.closest('li').classList.toggle('done'); salvarEstadoLocal();">
-                                <div class="song-info">
-                                    <span class="interpreter">${item.cantor}</span>
-                                    <span class="song-title">${item.musica}</span>
-                                </div>
-                                ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : '<div style="width:48px"></div>'}
-                            </div>
-                            <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${item.notas}</div>
-                        `;
-                    }
-                    lista.appendChild(li);
-                });
-
-                Sortable.create(lista, { 
-                    handle: '.drag-handle', 
-                    animation: 150,
-                    onEnd: salvarEstadoLocal 
-                });
-
-            } catch (e) { 
-                console.error(e);
-                lista.innerHTML = '<p style="text-align:center;">Erro ao carregar dados.</p>';
+                } catch(e) {}
             }
+
+            lista.innerHTML = '';
+            idsOrdenados.forEach(id => {
+                const item = dadosMap[id];
+                if (!item || !item.musica) return;
+                const li = document.createElement('li');
+                li.className = 'glass-panel';
+                li.dataset.id = item.id;
+                
+                if (item.tipo === 'separador') {
+                    li.classList.add('is-separator');
+                    li.innerHTML = `<div class="separator-content"><div class="drag-handle">⋮⋮</div><div class="separator-title">${item.musica}</div></div>`;
+                } else {
+                    const isDone = estadosCheck[item.id] || false;
+                    if(isDone) li.classList.add('done');
+                    const temMidia = item.media && item.media.length > 5;
+
+                    li.innerHTML = `
+                        <div class="li-main-row">
+                            <div class="drag-handle">⋮⋮</div>
+                            <input type="checkbox" class="chk-done" ${isDone ? 'checked' : ''} onchange="this.closest('li').classList.toggle('done'); salvarEstadoLocal();">
+                            <div class="song-info">
+                                <span class="interpreter">${item.cantor}</span>
+                                <span class="song-title">${item.musica}</span>
+                            </div>
+                            ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : '<div style="width:48px"></div>'}
+                        </div>
+                        <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${item.notas}</div>
+                    `;
+                }
+                lista.appendChild(li);
+            });
+
+            Sortable.create(lista, { handle: '.drag-handle', animation: 150, onEnd: salvarEstadoLocal });
         }
 
         function tocar(tipo, media, cantor, musica) {
@@ -321,13 +309,10 @@
             const yt = document.getElementById('yt-player');
             const floatCtrl = document.getElementById('float-ctrl');
             const btnPause = document.getElementById('btn-pause-float');
-            const container = document.getElementById('main-player-container');
             
-            container.classList.remove('player-minimized');
+            document.getElementById('main-player-container').classList.remove('player-minimized');
             document.getElementById('btn-toggle').innerText = '✕';
             document.getElementById('now-playing').innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
-            
-            // Mostrar botões flutuantes
             floatCtrl.style.display = 'flex';
             btnPause.innerText = "⏸ Pausar";
             
@@ -338,7 +323,7 @@
             
             if (ehYouTube) {
                 yt.style.display = 'block';
-                btnPause.style.display = 'none'; // YouTube não suporta pause via JS externo facilmente sem API
+                btnPause.style.display = 'none';
                 let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
                 yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
             } else {
