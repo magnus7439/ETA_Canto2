@@ -25,6 +25,7 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.6);
         }
 
+        /* PLAYER */
         .master-player {
             position: sticky; top: 10px; width: 95%; max-width: 600px;
             padding: 15px; z-index: 100; text-align: center; margin-bottom: 10px;
@@ -45,30 +46,19 @@
             display: flex; align-items: center; justify-content: center; font-weight: bold;
         }
 
+        /* MENU SELETOR DE ABA */
         .list-selector-container { width: 95%; max-width: 600px; margin-bottom: 10px; display: flex; gap: 5px; }
         #sheet-selector {
             flex: 1; padding: 12px; border-radius: 25px; background: rgba(100, 50, 150, 0.6);
             color: #ff4; border: 1px solid rgba(255, 255, 255, 0.3); font-weight: bold; outline: none;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         .btn-reset-order {
             background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2);
             color: #fff; border-radius: 25px; padding: 0 15px; cursor: pointer; font-size: 0.8em;
         }
 
-        .floating-controls {
-            position: fixed; bottom: 20px; left: 50%;
-            transform: translateX(-50%); display: none; 
-            gap: 10px; z-index: 1000; width: 90%; max-width: 500px;
-        }
-        .btn-large {
-            flex: 1; padding: 15px 5px; border-radius: 12px; font-weight: bold;
-            font-size: 0.9em; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(8px); color: white; text-transform: uppercase;
-        }
-        .btn-stop { background: rgba(220, 20, 20, 0.8); }
-        .btn-pause { background: rgba(20, 80, 220, 0.8); }
-        .btn-reset { background: rgba(200, 160, 20, 0.8); color: #000; }
-
+        /* BUSCA */
         .search-container { width: 95%; max-width: 600px; margin-bottom: 20px; position: relative; }
         #search-input {
             width: 100%; padding: 12px 45px 12px 20px; border-radius: 25px;
@@ -80,18 +70,22 @@
             border: none; color: #ff4; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: none;
         }
 
-        ul { list-style: none; padding: 0; width: 95%; max-width: 700px; min-height: 50px; }
+        /* LISTA */
+        ul { list-style: none; padding: 0; width: 95%; max-width: 700px; min-height: 100px; }
         li { margin: 12px 0; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
         
+        /* SEPARADORES */
         li.is-separator { background: rgba(100, 50, 150, 0.6) !important; border: 1px solid rgba(255, 255, 255, 0.5); }
         .separator-content { display: grid; grid-template-columns: 35px 1fr; align-items: center; }
         .separator-title { font-size: 1.2em; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; text-align: center; width: 100%; color: #ff4; }
 
+        /* MÚSICAS (COM QUEBRA DE LINHA) */
         .li-main-row { display: grid; grid-template-columns: 35px 35px 1fr 50px; align-items: center; gap: 10px; }
         .drag-handle { cursor: grab; color: rgba(255,255,255,0.4); font-size: 22px; }
         .song-info { display: flex; flex-direction: column; overflow: hidden; }
         .interpreter { color: #ff4; font-weight: bold; font-size: 1.03em; text-transform: uppercase; }
         .song-title { font-size: 1.01em; color: #fff; }
+
         .btn-play {
             background: rgba(255, 255, 255, 0.1); color: #ff4; border: none;
             border-radius: 50%; width: 48px; height: 48px; cursor: pointer; font-size: 1.3em;
@@ -100,7 +94,7 @@
         .done { opacity: 0.3; filter: grayscale(100%); }
         .notes-field {
             background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255, 255, 255, 0.2);
-            color: #ccc; font-size: 0.9em; padding: 8px; border-radius: 8px; outline: none;
+            color: #ccc; font-size: 0.9em; padding: 8px; border-radius: 8px; outline: none; min-height: 20px;
         }
     </style>
 </head>
@@ -124,14 +118,8 @@
         <button class="btn-reset-order" onclick="resetarOrdemLocal()">Resetar Ordem</button>
     </div>
 
-    <div id="float-ctrl" class="floating-controls">
-        <button class="btn-large btn-reset" onclick="restartMedia()">↺ Início</button>
-        <button id="btn-pause-float" class="btn-large btn-pause" onclick="pauseMedia()">⏸ Pausar</button>
-        <button class="btn-large btn-stop" onclick="stopAll()">■ Stop</button>
-    </div>
-
     <div class="search-container">
-        <input type="text" id="search-input" placeholder="🔍 Buscar na lista..." oninput="filtrarLista()">
+        <input type="text" id="search-input" placeholder="🔍 Buscar música ou intérprete..." oninput="filtrarLista()">
         <button class="clear-search" id="btn-clear" onclick="limparBusca()">✕</button>
     </div>
 
@@ -141,7 +129,7 @@
         const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUwdgFWo3-RvINecYfmj0aMZBEKTeGjMkUoJrq-QvwzFTzKRU3XiMCQkDgxsNRtxMha2bTeirKvD8N/pub?output=csv';
         let GID_ATUAL = '1960210650';
 
-        // --- LÓGICA DE PERSISTÊNCIA (LOCALSTORAGE) ---
+        // --- PERSISTÊNCIA ---
         function salvarEstadoLocal() {
             const itens = [];
             document.querySelectorAll('#playlist-sortable li').forEach(li => {
@@ -154,13 +142,13 @@
         }
 
         function resetarOrdemLocal() {
-            if(confirm("Deseja voltar para a ordem original da planilha?")) {
+            if(confirm("Deseja voltar para a ordem original da planilha? Isso limpará suas marcações e organização manual deste dia.")) {
                 localStorage.removeItem('ordem_' + GID_ATUAL);
                 carregar();
             }
         }
 
-        // --- FUNÇÕES DO PLAYER ---
+        // --- PLAYER ---
         function mudarLista(novoGid) {
             GID_ATUAL = novoGid;
             carregar();
@@ -171,35 +159,6 @@
             const btn = document.getElementById('btn-toggle');
             const isMin = container.classList.toggle('player-minimized');
             btn.innerText = isMin ? '▼' : '✕';
-        }
-
-        function stopAll() {
-            const audio = document.getElementById('audio-player');
-            const yt = document.getElementById('yt-player');
-            document.getElementById('float-ctrl').style.display = 'none';
-            audio.pause(); audio.src = ""; yt.src = "";
-            audio.style.display = 'none'; yt.style.display = 'none';
-            document.getElementById('now-playing').innerText = "Parado";
-        }
-
-        function pauseMedia() {
-            const audio = document.getElementById('audio-player');
-            const btn = document.getElementById('btn-pause-float');
-            if (audio.style.display !== 'none') {
-                if (audio.paused) { audio.play(); btn.innerText = "⏸ Pausar"; }
-                else { audio.pause(); btn.innerText = "▶ Play"; }
-            }
-        }
-
-        function restartMedia() {
-            const audio = document.getElementById('audio-player');
-            const yt = document.getElementById('yt-player');
-            if (audio.style.display !== 'none') {
-                audio.currentTime = 0; audio.play();
-                document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
-            } else if (yt.style.display !== 'none') {
-                const oldSrc = yt.src; yt.src = ""; yt.src = oldSrc;
-            }
         }
 
         function filtrarLista() {
@@ -221,6 +180,7 @@
             filtrarLista();
         }
 
+        // --- CARREGAMENTO ---
         async function carregar() {
             const lista = document.getElementById('playlist-sortable');
             lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
@@ -244,16 +204,13 @@
                     };
                 });
 
-                // Recuperar ordem salva
                 const salva = localStorage.getItem('ordem_' + GID_ATUAL);
                 let idsOrdenados = Object.keys(dadosMap);
                 let estadosCheck = {};
 
                 if (salva) {
                     const objSalvo = JSON.parse(salva);
-                    // Filtra apenas IDs que ainda existem na planilha
                     idsOrdenados = objSalvo.map(s => s.id).filter(id => dadosMap[id]);
-                    // Adiciona IDs novos que não estavam no salvo
                     Object.keys(dadosMap).forEach(id => {
                         if (!idsOrdenados.includes(id)) idsOrdenados.push(id);
                     });
@@ -285,9 +242,9 @@
                                     <span class="interpreter">${item.cantor}</span>
                                     <span class="song-title">${item.musica}</span>
                                 </div>
-                                ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : '<div></div>'}
+                                ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : '<div style="width:48px"></div>'}
                             </div>
-                            <div class="notes-field" contenteditable="true">${item.notas}</div>
+                            <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${item.notas}</div>
                         `;
                     }
                     lista.appendChild(li);
@@ -301,20 +258,17 @@
 
             } catch (e) { 
                 console.error(e);
-                lista.innerHTML = '<p style="text-align:center;">Erro ao carregar.</p>';
+                lista.innerHTML = '<p style="text-align:center;">Erro ao carregar dados.</p>';
             }
         }
 
         function tocar(tipo, media, cantor, musica) {
             const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
-            const floatPauseBtn = document.getElementById('btn-pause-float');
             const container = document.getElementById('main-player-container');
             
             container.classList.remove('player-minimized');
             document.getElementById('btn-toggle').innerText = '✕';
-            document.getElementById('float-ctrl').style.display = 'flex';
-            floatPauseBtn.innerText = "⏸ Pausar";
             document.getElementById('now-playing').innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
             
             audio.pause(); audio.src = ""; yt.src = "";
@@ -324,12 +278,10 @@
             
             if (ehYouTube) {
                 yt.style.display = 'block';
-                floatPauseBtn.style.display = 'none';
                 let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
                 yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
             } else {
                 audio.style.display = 'block';
-                floatPauseBtn.style.display = 'flex';
                 let url = media;
                 if (url.includes('dropbox.com')) url = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '');
                 else if (!url.includes('http')) url = `https://docs.google.com/uc?export=open&id=${url}`;
