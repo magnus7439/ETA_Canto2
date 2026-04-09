@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETA Canto - Prof Roberto</title>
+    <title>ETA Canto Roberto</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -25,7 +26,6 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.6);
         }
 
-        /* PLAYER PRINCIPAL */
         .master-player {
             position: sticky; top: 10px; width: 95%; max-width: 600px;
             padding: 15px; z-index: 100; text-align: center; margin-bottom: 10px;
@@ -46,7 +46,6 @@
             display: flex; align-items: center; justify-content: center; font-weight: bold;
         }
 
-        /* CONTROLES FLUTUANTES */
         .floating-controls {
             position: fixed; bottom: 20px; left: 50%;
             transform: translateX(-50%); display: none; 
@@ -56,33 +55,55 @@
             flex: 1; padding: 15px 5px; border-radius: 12px; font-weight: bold;
             font-size: 0.9em; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(8px); color: white; text-transform: uppercase;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
         .btn-stop { background: rgba(220, 20, 20, 0.8); }
         .btn-pause { background: rgba(20, 80, 220, 0.8); }
         .btn-restart { background: rgba(200, 160, 20, 0.8); color: #000; }
 
-        /* SELETOR DE ABA */
         .list-selector-container { width: 95%; max-width: 600px; margin-bottom: 10px; display: flex; gap: 5px; }
         #sheet-selector {
             flex: 1; padding: 12px; border-radius: 25px; background: rgba(100, 50, 150, 0.6);
             color: #ff4; border: 1px solid rgba(255, 255, 255, 0.3); font-weight: bold; outline: none;
-            cursor: pointer;
+        }
+        .btn-reset-order {
+            background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: #fff; border-radius: 25px; padding: 0 15px; cursor: pointer; font-size: 0.8em;
         }
 
-        /* LISTA E MÚSICAS */
+        .search-container { width: 95%; max-width: 600px; margin-bottom: 20px; position: relative; }
+        #search-input {
+            width: 100%; padding: 12px 45px 12px 20px; border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.1);
+            color: #fff; font-size: 1em; outline: none; box-sizing: border-box;
+        }
+        .clear-search {
+            position: absolute; right: 12px; top: 7px; background: rgba(255, 255, 255, 0.2);
+            border: none; color: #ff4; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: none;
+        }
+
         ul { list-style: none; padding: 0; width: 95%; max-width: 700px; min-height: 100px; }
         li { margin: 12px 0; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+        
+        li.is-separator { background: rgba(100, 50, 150, 0.6) !important; border: 1px solid rgba(255, 255, 255, 0.5); }
+        .separator-content { display: grid; grid-template-columns: 35px 1fr; align-items: center; }
+        .separator-title { font-size: 1.2em; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; text-align: center; width: 100%; color: #ff4; }
+
         .li-main-row { display: grid; grid-template-columns: 35px 35px 1fr 50px; align-items: center; gap: 10px; }
-        .song-info { display: flex; flex-direction: column; }
-        .interpreter { color: #ff4; font-weight: bold; text-transform: uppercase; font-size: 0.9em; }
-        .song-title { font-size: 1.1em; }
-        
-        .is-separator { background: rgba(100, 50, 150, 0.6) !important; text-align: center; }
-        .separator-title { color: #ff4; font-weight: bold; letter-spacing: 2px; }
-        
+        .drag-handle { cursor: grab; color: rgba(255,255,255,0.4); font-size: 22px; }
+        .song-info { display: flex; flex-direction: column; overflow: hidden; }
+        .interpreter { color: #ff4; font-weight: bold; font-size: 1.03em; text-transform: uppercase; }
+        .song-title { font-size: 1.01em; color: #fff; }
+
+        .btn-play {
+            background: rgba(255, 255, 255, 0.1); color: #ff4; border: none;
+            border-radius: 50%; width: 48px; height: 48px; cursor: pointer; font-size: 1.3em;
+            display: flex; align-items: center; justify-content: center;
+        }
         .done { opacity: 0.3; filter: grayscale(100%); }
-        .notes-field { background: rgba(255,255,255,0.05); padding: 8px; border-radius: 5px; min-height: 20px; outline: none; border: 1px dashed rgba(255,255,255,0.2); }
+        .notes-field {
+            background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255, 255, 255, 0.2);
+            color: #ccc; font-size: 0.9em; padding: 8px; border-radius: 8px; outline: none; min-height: 20px;
+        }
     </style>
 </head>
 <body>
@@ -102,6 +123,7 @@
             <option value="911593347">📅 QUARTA-FEIRA</option>
             <option value="1593190716">📅 QUINTA-FEIRA</option>
         </select>
+        <button class="btn-reset-order" onclick="resetarOrdemLocal()">Resetar Ordem</button>
     </div>
 
     <div id="float-ctrl" class="floating-controls">
@@ -110,64 +132,117 @@
         <button class="btn-large btn-stop" onclick="stopAll()">■ Stop</button>
     </div>
 
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="🔍 Buscar música ou intérprete..." oninput="filtrarLista()">
+        <button class="clear-search" id="btn-clear" onclick="limparBusca()">✕</button>
+    </div>
+
     <ul id="playlist-sortable"></ul>
 
-    <script>
+<script>
         const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUwdgFWo3-RvINecYfmj0aMZBEKTeGjMkUoJrq-QvwzFTzKRU3XiMCQkDgxsNRtxMha2bTeirKvD8N/pub?output=csv';
         let GID_ATUAL = '1960210650';
 
-        // --- PERSISTÊNCIA REFORÇADA (LocalStorage + Cookies) ---
-        function setPersist(key, value) {
+        // --- SISTEMA DE PERSISTÊNCIA COMPATÍVEL COM ANDROID/MIT ---
+        function safeGetLocal(key) {
             try {
-                localStorage.setItem(key, value);
-                // Salva também como cookie (expira em 1 ano) como garantia para o App Inventor
-                const d = new Date();
-                d.setTime(d.getTime() + (365*24*60*60*1000));
-                document.cookie = key + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/;SameSite=Lax";
-            } catch(e) { console.error(e); }
+                const data = localStorage.getItem(key);
+                return data ? data : null;
+            } catch(e) { return null; }
         }
 
-        function getPersist(key) {
+        function safeSetLocal(key, value) {
             try {
-                let val = localStorage.getItem(key);
-                if (val) return val;
-                // Busca no cookie se o localStorage falhar
-                let name = key + "=";
-                let ca = document.cookie.split(';');
-                for(let i = 0; i < ca.length; i++) {
-                    let c = ca[i].trim();
-                    if (c.indexOf(name) == 0) return decodeURIComponent(c.substring(name.length, c.length));
-                }
-            } catch(e) { return null; }
-            return null;
+                localStorage.setItem(key, value);
+            } catch(e) {
+                console.error("Erro no armazenamento local:", e);
+                // No App Inventor, se o localStorage falhar, o dado se perde na sessão.
+            }
         }
 
         function salvarEstadoLocal() {
             const itens = [];
             document.querySelectorAll('#playlist-sortable li').forEach(li => {
-                if (li.dataset.id) {
-                    itens.push({
-                        id: li.dataset.id,
-                        done: li.querySelector('.chk-done')?.checked || false,
-                        notas: li.querySelector('.notes-field')?.innerText || ""
-                    });
-                }
+                if (!li.dataset.id) return;
+                itens.push({
+                    id: li.dataset.id,
+                    done: li.querySelector('.chk-done')?.checked || false,
+                    notas: li.querySelector('.notes-field')?.innerText || ""
+                });
             });
-            setPersist('ordem_' + GID_ATUAL, JSON.stringify(itens));
+            safeSetLocal('ordem_' + GID_ATUAL, JSON.stringify(itens));
         }
 
-        // --- LÓGICA DE CARREGAMENTO ---
+        function resetarOrdemLocal() {
+            if(confirm("Deseja voltar para a ordem original?")) {
+                try { localStorage.removeItem('ordem_' + GID_ATUAL); } catch(e){}
+                carregar();
+            }
+        }
+
+        // --- CONTROLES DE MÍDIA ---
+        function stopAll() {
+            const audio = document.getElementById('audio-player');
+            const yt = document.getElementById('yt-player');
+            document.getElementById('float-ctrl').style.display = 'none';
+            audio.pause(); audio.src = ""; yt.src = "";
+            audio.style.display = 'none'; yt.style.display = 'none';
+            document.getElementById('now-playing').innerText = "Selecione uma faixa";
+        }
+
+        function pauseMedia() {
+            const audio = document.getElementById('audio-player');
+            const btn = document.getElementById('btn-pause-float');
+            if (audio.style.display !== 'none') {
+                if (audio.paused) { audio.play(); btn.innerText = "⏸ Pausar"; }
+                else { audio.pause(); btn.innerText = "▶ Play"; }
+            }
+        }
+
+        function restartMedia() {
+            const audio = document.getElementById('audio-player');
+            const yt = document.getElementById('yt-player');
+            if (audio.style.display !== 'none') {
+                audio.currentTime = 0; audio.play();
+                document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
+            } else if (yt.style.display !== 'none') {
+                const oldSrc = yt.src; yt.src = ""; yt.src = oldSrc;
+            }
+        }
+
         function mudarLista(novoGid) { GID_ATUAL = novoGid; carregar(); }
 
+        function togglePlayer() {
+            const container = document.getElementById('main-player-container');
+            const isMin = container.classList.toggle('player-minimized');
+            document.getElementById('btn-toggle').innerText = isMin ? '▼' : '✕';
+        }
+
+        function filtrarLista() {
+            const input = document.getElementById('search-input');
+            const termo = input.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            document.getElementById('btn-clear').style.display = input.value ? "block" : "none";
+            document.querySelectorAll('#playlist-sortable li').forEach(li => {
+                const txt = li.innerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                li.style.display = txt.includes(termo) ? (li.classList.contains('is-separator') && termo !== "" ? "none" : "flex") : "none";
+            });
+        }
+
+        function limparBusca() { document.getElementById('search-input').value = ''; filtrarLista(); }
+
+        // --- CARREGAMENTO ---
         function carregar() {
             const lista = document.getElementById('playlist-sortable');
             lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
             
             const xhr = new XMLHttpRequest();
-            xhr.open("GET", `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`, true);
+            const fullUrl = `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`;
+            
+            xhr.open("GET", fullUrl, true);
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    renderizar(xhr.responseText);
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) { renderizar(xhr.responseText); }
+                    else { lista.innerHTML = `<p style="text-align:center;">Erro de conexão.</p>`; }
                 }
             };
             xhr.send();
@@ -176,11 +251,11 @@
         function renderizar(texto) {
             const lista = document.getElementById('playlist-sortable');
             const linhas = texto.split('\n').map(l => l.trim()).filter(l => l);
+            
             let dadosMap = {};
-
             linhas.slice(1).forEach((linha, index) => {
                 const cols = linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                const id = cols[0]?.replace(/"/g, '') || 'id-'+index;
+                const id = cols[0]?.replace(/"/g, '') || ('item-'+index);
                 dadosMap[id] = {
                     id: id, cantor: cols[1]?.replace(/"/g, '') || '',
                     musica: cols[2]?.replace(/"/g, '') || '',
@@ -190,16 +265,18 @@
                 };
             });
 
-            const salva = getPersist('ordem_' + GID_ATUAL);
+            const salva = safeGetLocal('ordem_' + GID_ATUAL);
             let idsOrdenados = Object.keys(dadosMap);
-            let estados = {};
+            let estadosCheck = {};
 
             if (salva) {
                 try {
-                    const obj = JSON.parse(salva);
-                    idsOrdenados = obj.map(s => s.id).filter(id => dadosMap[id]);
-                    Object.keys(dadosMap).forEach(id => { if(!idsOrdenados.includes(id)) idsOrdenados.push(id); });
-                    obj.forEach(s => estados[s.id] = { done: s.done, notas: s.notas });
+                    const objSalvo = JSON.parse(salva);
+                    idsOrdenados = objSalvo.map(s => s.id).filter(id => dadosMap[id]);
+                    Object.keys(dadosMap).forEach(id => { if (!idsOrdenados.includes(id)) idsOrdenados.push(id); });
+                    objSalvo.forEach(s => {
+                        estadosCheck[s.id] = { done: s.done, notas: s.notas };
+                    });
                 } catch(e) {}
             }
 
@@ -210,88 +287,63 @@
                 const li = document.createElement('li');
                 li.className = 'glass-panel';
                 li.dataset.id = item.id;
-
+                
                 if (item.tipo === 'separador') {
                     li.classList.add('is-separator');
-                    li.innerHTML = `<div class="separator-title">${item.musica}</div>`;
+                    li.innerHTML = `<div class="separator-content"><div class="drag-handle">⋮⋮</div><div class="separator-title">${item.musica}</div></div>`;
                 } else {
-                    const s = estados[item.id] || { done: false, notas: item.notas };
-                    if(s.done) li.classList.add('done');
+                    const salvoInfo = estadosCheck[item.id] || { done: false, notas: item.notas };
+                    if(salvoInfo.done) li.classList.add('done');
+                    const temMidia = item.media && item.media.length > 5;
+
                     li.innerHTML = `
                         <div class="li-main-row">
                             <div class="drag-handle">⋮⋮</div>
-                            <input type="checkbox" class="chk-done" ${s.done ? 'checked' : ''} onchange="this.closest('li').classList.toggle('done'); salvarEstadoLocal();">
+                            <input type="checkbox" class="chk-done" ${salvoInfo.done ? 'checked' : ''} onchange="this.closest('li').classList.toggle('done'); salvarEstadoLocal();">
                             <div class="song-info">
                                 <span class="interpreter">${item.cantor}</span>
                                 <span class="song-title">${item.musica}</span>
                             </div>
-                            <button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>
+                            ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : '<div style="width:48px"></div>'}
                         </div>
-                        <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${s.notas}</div>
+                        <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${salvoInfo.notas}</div>
                     `;
                 }
                 lista.appendChild(li);
             });
+
             Sortable.create(lista, { handle: '.drag-handle', animation: 150, onEnd: salvarEstadoLocal });
         }
 
-        // --- PLAYER E CONTROLES ---
-        function togglePlayer() {
-            const isMin = document.getElementById('main-player-container').classList.toggle('player-minimized');
-            document.getElementById('btn-toggle').innerText = isMin ? '▼' : '✕';
-        }
-
-        function stopAll() {
-            const a = document.getElementById('audio-player');
-            const y = document.getElementById('yt-player');
-            a.pause(); a.src = ""; y.src = "";
-            a.style.display = y.style.display = 'none';
-            document.getElementById('float-ctrl').style.display = 'none';
-            document.getElementById('now-playing').innerText = "Selecione uma faixa";
-        }
-
-        function pauseMedia() {
-            const a = document.getElementById('audio-player');
-            const b = document.getElementById('btn-pause-float');
-            if(a.paused) { a.play(); b.innerText = "⏸ Pausar"; } 
-            else { a.pause(); b.innerText = "▶ Play"; }
-        }
-
-        function restartMedia() {
-            const a = document.getElementById('audio-player');
-            const y = document.getElementById('yt-player');
-            if(a.style.display !== 'none') { a.currentTime = 0; a.play(); }
-            else { const s = y.src; y.src = ""; y.src = s; }
-        }
-
         function tocar(tipo, media, cantor, musica) {
-            const a = document.getElementById('audio-player');
-            const y = document.getElementById('yt-player');
-            const f = document.getElementById('float-ctrl');
+            const audio = document.getElementById('audio-player');
+            const yt = document.getElementById('yt-player');
             document.getElementById('main-player-container').classList.remove('player-minimized');
             document.getElementById('btn-toggle').innerText = '✕';
-            document.getElementById('now-playing').innerHTML = `<b>${musica}</b><br><small>${cantor}</small>`;
+            document.getElementById('now-playing').innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
+            document.getElementById('float-ctrl').style.display = 'flex';
+            document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
             
-            a.pause(); a.src = ""; y.src = "";
-            a.style.display = y.style.display = 'none';
-            f.style.display = 'flex';
-
-            if(media.includes('youtube') || media.includes('youtu.be')) {
-                y.style.display = 'block';
-                let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : media.split('be/')[1];
-                y.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+            audio.pause(); audio.src = ""; yt.src = "";
+            audio.style.display = 'none'; yt.style.display = 'none';
+            
+            const ehYouTube = media.includes('youtube.com') || media.includes('youtu.be') || media.length === 11;
+            
+            if (ehYouTube) {
+                yt.style.display = 'block';
                 document.getElementById('btn-pause-float').style.display = 'none';
+                let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
+                yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
             } else {
-                a.style.display = 'block';
+                audio.style.display = 'block';
                 document.getElementById('btn-pause-float').style.display = 'flex';
                 let url = media;
-                if(url.includes('dropbox')) url = url.replace('www.dropbox', 'dl.dropboxusercontent').replace('?dl=0', '');
-                else if(!url.includes('http')) url = `https://docs.google.com/uc?export=open&id=${url}`;
-                a.src = url; a.play();
+                if (url.includes('dropbox.com')) url = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '');
+                else if (!url.includes('http')) url = `https://docs.google.com/uc?export=open&id=${url}`;
+                audio.src = url; audio.load(); audio.play();
             }
         }
-
-        window.onload = carregar;
+        window.addEventListener('DOMContentLoaded', carregar);
     </script>
 </body>
 </html>
