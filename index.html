@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETA Canto - App Edition</title>
+    <title>ETA Canto</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -138,52 +138,48 @@
 
     <ul id="playlist-sortable"></ul>
 
-    <script>
+<script>
         const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUwdgFWo3-RvINecYfmj0aMZBEKTeGjMkUoJrq-QvwzFTzKRU3XiMCQkDgxsNRtxMha2bTeirKvD8N/pub?output=csv';
         let GID_ATUAL = '1960210650';
 
-// Funções de Persistência Reforçadas para App Inventor
+        // --- SISTEMA DE PERSISTÊNCIA COMPATÍVEL COM ANDROID/MIT ---
         function safeGetLocal(key) {
             try {
-                // Tenta buscar do localStorage
-                const data = window.localStorage.getItem(key);
-                if (data) return data;
-                
-                // Se falhar, tenta buscar do sessionStorage (em alguns casos de permissão)
-                return window.sessionStorage.getItem(key);
-            } catch(e) { 
-                console.log("Erro ao ler armazenamento:", e);
-                return null; 
-            }
+                const data = localStorage.getItem(key);
+                return data ? data : null;
+            } catch(e) { return null; }
         }
 
         function safeSetLocal(key, value) {
             try {
-                window.localStorage.setItem(key, value);
-                window.sessionStorage.setItem(key, value); // Backup na sessão
+                localStorage.setItem(key, value);
             } catch(e) {
-                console.log("Erro ao salvar armazenamento:", e);
+                console.error("Erro no armazenamento local:", e);
+                // No App Inventor, se o localStorage falhar, o dado se perde na sessão.
             }
         }
 
         function salvarEstadoLocal() {
             const itens = [];
             document.querySelectorAll('#playlist-sortable li').forEach(li => {
+                if (!li.dataset.id) return;
                 itens.push({
                     id: li.dataset.id,
-                    done: li.querySelector('.chk-done')?.checked || false
+                    done: li.querySelector('.chk-done')?.checked || false,
+                    notas: li.querySelector('.notes-field')?.innerText || ""
                 });
             });
             safeSetLocal('ordem_' + GID_ATUAL, JSON.stringify(itens));
         }
 
         function resetarOrdemLocal() {
-            if(confirm("Voltar para a ordem original?")) {
-                try { localStorage.removeItem('ordem_' + GID_ATUAL); } catch(e) {}
+            if(confirm("Deseja voltar para a ordem original?")) {
+                try { localStorage.removeItem('ordem_' + GID_ATUAL); } catch(e){}
                 carregar();
             }
         }
 
+        // --- CONTROLES DE MÍDIA ---
         function stopAll() {
             const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
@@ -233,23 +229,19 @@
 
         function limparBusca() { document.getElementById('search-input').value = ''; filtrarLista(); }
 
-        // --- CARREGAMENTO OTIMIZADO PARA WEBVIEW ---
+        // --- CARREGAMENTO ---
         function carregar() {
             const lista = document.getElementById('playlist-sortable');
             lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
             
             const xhr = new XMLHttpRequest();
-            // Adiciona timestamp para evitar cache do componente WebViewer
             const fullUrl = `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`;
             
             xhr.open("GET", fullUrl, true);
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        renderizar(xhr.responseText);
-                    } else {
-                        lista.innerHTML = `<p style="text-align:center; color: #ff4;">Erro de conexão. Verifique a internet.</p>`;
-                    }
+                    if (xhr.status === 200) { renderizar(xhr.responseText); }
+                    else { lista.innerHTML = `<p style="text-align:center;">Erro de conexão.</p>`; }
                 }
             };
             xhr.send();
@@ -281,7 +273,9 @@
                     const objSalvo = JSON.parse(salva);
                     idsOrdenados = objSalvo.map(s => s.id).filter(id => dadosMap[id]);
                     Object.keys(dadosMap).forEach(id => { if (!idsOrdenados.includes(id)) idsOrdenados.push(id); });
-                    objSalvo.forEach(s => estadosCheck[s.id] = s.done);
+                    objSalvo.forEach(s => {
+                        estadosCheck[s.id] = { done: s.done, notas: s.notas };
+                    });
                 } catch(e) {}
             }
 
@@ -297,21 +291,21 @@
                     li.classList.add('is-separator');
                     li.innerHTML = `<div class="separator-content"><div class="drag-handle">⋮⋮</div><div class="separator-title">${item.musica}</div></div>`;
                 } else {
-                    const isDone = estadosCheck[item.id] || false;
-                    if(isDone) li.classList.add('done');
+                    const salvoInfo = estadosCheck[item.id] || { done: false, notas: item.notas };
+                    if(salvoInfo.done) li.classList.add('done');
                     const temMidia = item.media && item.media.length > 5;
 
                     li.innerHTML = `
                         <div class="li-main-row">
                             <div class="drag-handle">⋮⋮</div>
-                            <input type="checkbox" class="chk-done" ${isDone ? 'checked' : ''} onchange="this.closest('li').classList.toggle('done'); salvarEstadoLocal();">
+                            <input type="checkbox" class="chk-done" ${salvoInfo.done ? 'checked' : ''} onchange="this.closest('li').classList.toggle('done'); salvarEstadoLocal();">
                             <div class="song-info">
                                 <span class="interpreter">${item.cantor}</span>
                                 <span class="song-title">${item.musica}</span>
                             </div>
                             ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : '<div style="width:48px"></div>'}
                         </div>
-                        <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${item.notas}</div>
+                        <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${salvoInfo.notas}</div>
                     `;
                 }
                 lista.appendChild(li);
@@ -323,14 +317,11 @@
         function tocar(tipo, media, cantor, musica) {
             const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
-            const floatCtrl = document.getElementById('float-ctrl');
-            const btnPause = document.getElementById('btn-pause-float');
-            
             document.getElementById('main-player-container').classList.remove('player-minimized');
             document.getElementById('btn-toggle').innerText = '✕';
             document.getElementById('now-playing').innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
-            floatCtrl.style.display = 'flex';
-            btnPause.innerText = "⏸ Pausar";
+            document.getElementById('float-ctrl').style.display = 'flex';
+            document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
             
             audio.pause(); audio.src = ""; yt.src = "";
             audio.style.display = 'none'; yt.style.display = 'none';
@@ -339,12 +330,12 @@
             
             if (ehYouTube) {
                 yt.style.display = 'block';
-                btnPause.style.display = 'none';
+                document.getElementById('btn-pause-float').style.display = 'none';
                 let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
                 yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
             } else {
                 audio.style.display = 'block';
-                btnPause.style.display = 'flex';
+                document.getElementById('btn-pause-float').style.display = 'flex';
                 let url = media;
                 if (url.includes('dropbox.com')) url = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '');
                 else if (!url.includes('http')) url = `https://docs.google.com/uc?export=open&id=${url}`;
