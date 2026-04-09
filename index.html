@@ -142,12 +142,28 @@
         const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUwdgFWo3-RvINecYfmj0aMZBEKTeGjMkUoJrq-QvwzFTzKRU3XiMCQkDgxsNRtxMha2bTeirKvD8N/pub?output=csv';
         let GID_ATUAL = '1960210650';
 
-        // Evita erro se o LocalStorage estiver bloqueado no WebView
+// Funções de Persistência Reforçadas para App Inventor
         function safeGetLocal(key) {
-            try { return localStorage.getItem(key); } catch(e) { return null; }
+            try {
+                // Tenta buscar do localStorage
+                const data = window.localStorage.getItem(key);
+                if (data) return data;
+                
+                // Se falhar, tenta buscar do sessionStorage (em alguns casos de permissão)
+                return window.sessionStorage.getItem(key);
+            } catch(e) { 
+                console.log("Erro ao ler armazenamento:", e);
+                return null; 
+            }
         }
+
         function safeSetLocal(key, value) {
-            try { localStorage.setItem(key, value); } catch(e) { }
+            try {
+                window.localStorage.setItem(key, value);
+                window.sessionStorage.setItem(key, value); // Backup na sessão
+            } catch(e) {
+                console.log("Erro ao salvar armazenamento:", e);
+            }
         }
 
         function salvarEstadoLocal() {
