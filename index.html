@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA - Prof Roberto</title>
+    <title>ETA Canto: Roberto</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -90,7 +90,7 @@
         .separator-title { font-size: 1.2em; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; text-align: center; width: 100%; color: #ff4; }
 
         .li-main-row { display: grid; grid-template-columns: 35px 35px 1fr 50px; align-items: center; gap: 10px; }
-        .drag-handle { cursor: grab; color: rgba(255,255,255,0.4); font-size: 22px; touch-action: none; }
+        .drag-handle { cursor: grab; color: rgba(255,255,255,0.4); font-size: 22px; }
         .song-info { display: flex; flex-direction: column; overflow: hidden; }
         .interpreter { color: #ff4; font-weight: bold; font-size: 1.03em; text-transform: uppercase; }
         .song-title { font-size: 1.01em; color: #fff; }
@@ -231,31 +231,19 @@
 
         function limparBusca() { document.getElementById('search-input').value = ''; filtrarLista(); }
 
-// --- CARREGAMENTO OTIMIZADO ---
+        // --- CARREGAMENTO ---
         function carregar() {
             const lista = document.getElementById('playlist-sortable');
-            
-            // Tenta mostrar o que está salvo localmente primeiro (se houver)
-            // para o usuário não ver a tela branca enquanto o Google responde.
-            const cacheTemporario = safeGetLocal('ultima_renderizacao_' + GID_ATUAL);
-            if (cacheTemporario) {
-                lista.innerHTML = cacheTemporario;
-                // Reativa o Sortable mesmo no cache
-                Sortable.create(lista, { handle: '.drag-handle', animation: 150, onEnd: salvarEstadoLocal });
-            } else {
-                lista.innerHTML = '<p style="text-align:center;">Carregando repertório...</p>';
-            }
+            lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
             
             const xhr = new XMLHttpRequest();
-            // Adicionamos um parâmetro de tempo para evitar que o navegador use um cache antigo do CSV
-            const fullUrl = `${BASE_URL}&gid=${GID_ATUAL}&t=${Date.now()}`;
+            const fullUrl = `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`;
             
             xhr.open("GET", fullUrl, true);
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) { 
-                    renderizar(xhr.responseText);
-                    // Salva a estrutura HTML pronta para o próximo carregamento ser instantâneo
-                    safeSetLocal('ultima_renderizacao_' + GID_ATUAL, lista.innerHTML);
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) { renderizar(xhr.responseText); }
+                    else { lista.innerHTML = `<p style="text-align:center;">Erro de conexão.</p>`; }
                 }
             };
             xhr.send();
