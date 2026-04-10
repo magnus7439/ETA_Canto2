@@ -240,7 +240,16 @@
             if (cacheTemporario) {
                 lista.innerHTML = cacheTemporario;
                 // Reativa o Sortable mesmo no cache
-                Sortable.create(lista, { handle: '.drag-handle', animation: 150, onEnd: salvarEstadoLocal });
+                Sortable.create(lista, { 
+                    handle: '.drag-handle', 
+                    animation: 150, 
+                    delay: 100,             // Pequeno atraso para o toque
+                    delayOnTouchOnly: true, 
+                    forceFallback: true,    // FORÇA o modo de compatibilidade (ajuda no encaixe)
+                    fallbackOnBody: true,   // Melhora a movimentação fora da lista
+                    swapThreshold: 0.65,    // Facilita o "encaixe" ao chegar perto de outro item
+                    ghostClass: "sortable-ghost", // Classe visual para o buraco que fica na lista
+                    onEnd: salvarEstadoLocal });
             } else {
                 lista.innerHTML = '<p style="text-align:center;">Carregando repertório...</p>';
             }
@@ -324,7 +333,16 @@
                 lista.appendChild(li);
             });
 
-            Sortable.create(lista, { handle: '.drag-handle', animation: 150, onEnd: salvarEstadoLocal });
+            Sortable.create(lista, { 
+                handle: '.drag-handle', 
+                animation: 150, 
+                delay: 100,             // Pequeno atraso para o toque
+                delayOnTouchOnly: true, 
+                forceFallback: true,    // FORÇA o modo de compatibilidade (ajuda no encaixe)
+                fallbackOnBody: true,   // Melhora a movimentação fora da lista
+                swapThreshold: 0.65,    // Facilita o "encaixe" ao chegar perto de outro item
+                ghostClass: "sortable-ghost", // Classe visual para o buraco que fica na lista
+                onEnd: salvarEstadoLocal });
         }
 
         function tocar(tipo, media, cantor, musica) {
