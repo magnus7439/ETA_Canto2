@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETA Canto - Prof Roberto</title>
+    <title>ETA Canto - Prof. Roberto</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -103,6 +103,19 @@
         .notes-field {
             background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255, 255, 255, 0.2);
             color: #ccc; font-size: 0.9em; padding: 8px; border-radius: 8px; outline: none; min-height: 20px;
+        }
+        /* Estilo do "fantasma" (o lugar onde o item vai cair) */
+        .sortable-ghost {
+            opacity: 0.3;
+            background-color: #ff4 !important; /* Cor de destaque para o encaixe */
+            border: 2px dashed #fff;
+        }
+
+        /* Garante que a alça de arrasto não interfira no touch */
+        .drag-handle {
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
     </style>
 </head>
