@@ -1,11 +1,9 @@
-
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA - Roberto</title>
+    <title>Canto ETA Roberto</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -86,6 +84,13 @@
         li { margin: 12px 0; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
         
         li.is-separator { background: rgba(100, 50, 150, 0.6) !important; border: 1px solid rgba(255, 255, 255, 0.5); }
+        
+        /* NOVO: Estilo para o tipo Estudo */
+        li.is-study { 
+            background: rgba(100, 50, 150, 0.4) !important; 
+            border: 1px solid rgba(180, 100, 255, 0.4); 
+        }
+
         .separator-content { display: grid; grid-template-columns: 35px 1fr; align-items: center; }
         .separator-title { font-size: 1.2em; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; text-align: center; width: 100%; color: #ff4; }
 
@@ -144,17 +149,14 @@
 
 <script>
         const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUwdgFWo3-RvINecYfmj0aMZBEKTeGjMkUoJrq-QvwzFTzKRU3XiMCQkDgxsNRtxMha2bTeirKvD8N/pub?output=csv';
-        // --- LER GID DA URL OU USAR PADRÃO ---
         const urlParams = new URLSearchParams(window.location.search);
         let GID_ATUAL = urlParams.get('gid') || '1960210650';
 
-// Faz o seletor visual (o menu de abas) mostrar o dia correto automaticamente
-window.addEventListener('load', () => {
-    const seletor = document.getElementById('sheet-selector');
-    if (seletor) seletor.value = GID_ATUAL;
-});
+        window.addEventListener('load', () => {
+            const seletor = document.getElementById('sheet-selector');
+            if (seletor) seletor.value = GID_ATUAL;
+        });
 
-        // --- SISTEMA DE PERSISTÊNCIA COMPATÍVEL COM ANDROID/MIT ---
         function safeGetLocal(key) {
             try {
                 const data = localStorage.getItem(key);
@@ -167,7 +169,6 @@ window.addEventListener('load', () => {
                 localStorage.setItem(key, value);
             } catch(e) {
                 console.error("Erro no armazenamento local:", e);
-                // No App Inventor, se o localStorage falhar, o dado se perde na sessão.
             }
         }
 
@@ -191,7 +192,6 @@ window.addEventListener('load', () => {
             }
         }
 
-        // --- CONTROLES DE MÍDIA ---
         function stopAll() {
             const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
@@ -241,7 +241,6 @@ window.addEventListener('load', () => {
 
         function limparBusca() { document.getElementById('search-input').value = ''; filtrarLista(); }
 
-        // --- CARREGAMENTO ---
         function carregar() {
             const lista = document.getElementById('playlist-sortable');
             lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
@@ -303,6 +302,9 @@ window.addEventListener('load', () => {
                     li.classList.add('is-separator');
                     li.innerHTML = `<div class="separator-content"><div class="drag-handle">⋮⋮</div><div class="separator-title">${item.musica}</div></div>`;
                 } else {
+                    // --- LÓGICA DO TIPO ESTUDO ---
+                    if (item.tipo === 'estudo') li.classList.add('is-study');
+
                     const salvoInfo = estadosCheck[item.id] || { done: false, notas: item.notas };
                     if(salvoInfo.done) li.classList.add('done');
                     const temMidia = item.media && item.media.length > 5;
