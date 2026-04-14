@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA Roberto</title>
+    <title>Canto ETA - Roberto</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -85,7 +85,7 @@
         
         li.is-separator { background: rgba(100, 50, 150, 0.6) !important; border: 1px solid rgba(255, 255, 255, 0.5); }
         
-        /* NOVO: Estilo para o tipo Estudo */
+        /* ESTILO PARA ESTUDO */
         li.is-study { 
             background: rgba(100, 50, 150, 0.4) !important; 
             border: 1px solid rgba(180, 100, 255, 0.4); 
@@ -158,18 +158,11 @@
         });
 
         function safeGetLocal(key) {
-            try {
-                const data = localStorage.getItem(key);
-                return data ? data : null;
-            } catch(e) { return null; }
+            try { return localStorage.getItem(key); } catch(e) { return null; }
         }
 
         function safeSetLocal(key, value) {
-            try {
-                localStorage.setItem(key, value);
-            } catch(e) {
-                console.error("Erro no armazenamento local:", e);
-            }
+            try { localStorage.setItem(key, value); } catch(e) {}
         }
 
         function salvarEstadoLocal() {
@@ -302,11 +295,13 @@
                     li.classList.add('is-separator');
                     li.innerHTML = `<div class="separator-content"><div class="drag-handle">⋮⋮</div><div class="separator-title">${item.musica}</div></div>`;
                 } else {
-                    // --- LÓGICA DO TIPO ESTUDO ---
                     if (item.tipo === 'estudo') li.classList.add('is-study');
 
-                    const salvoInfo = estadosCheck[item.id] || { done: false, notas: item.notas };
+                    const salvoInfo = estadosCheck[item.id] || { done: false, notas: "" };
                     if(salvoInfo.done) li.classList.add('done');
+                    
+                    // Lógica para mostrar a nota: Prioriza o que foi digitado no app, senão mostra o que está na planilha
+                    const notaFinal = (salvoInfo.notas && salvoInfo.notas.trim() !== "") ? salvoInfo.notas : item.notas;
                     const temMidia = item.media && item.media.length > 5;
 
                     li.innerHTML = `
@@ -319,7 +314,7 @@
                             </div>
                             ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : '<div style="width:48px"></div>'}
                         </div>
-                        <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${salvoInfo.notas}</div>
+                        <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${notaFinal}</div>
                     `;
                 }
                 lista.appendChild(li);
