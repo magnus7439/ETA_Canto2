@@ -84,12 +84,7 @@
         li { margin: 12px 0; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
         
         li.is-separator { background: rgba(100, 50, 150, 0.6) !important; border: 1px solid rgba(255, 255, 255, 0.5); }
-        
-        /* ESTILO PARA ESTUDO */
-        li.is-study { 
-            background: rgba(100, 50, 150, 0.4) !important; 
-            border: 1px solid rgba(180, 100, 255, 0.4); 
-        }
+        li.is-study { background: rgba(100, 50, 150, 0.4) !important; border: 1px solid rgba(180, 100, 255, 0.4); }
 
         .separator-content { display: grid; grid-template-columns: 35px 1fr; align-items: center; }
         .separator-title { font-size: 1.2em; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; text-align: center; width: 100%; color: #ff4; }
@@ -295,23 +290,31 @@
                     li.classList.add('is-separator');
                     li.innerHTML = `<div class="separator-content"><div class="drag-handle">⋮⋮</div><div class="separator-title">${item.musica}</div></div>`;
                 } else {
-                    if (item.tipo === 'estudo') li.classList.add('is-study');
-
                     const salvoInfo = estadosCheck[item.id] || { done: false, notas: "" };
                     if(salvoInfo.done) li.classList.add('done');
-                    
-                    // Lógica para mostrar a nota: Prioriza o que foi digitado no app, senão mostra o que está na planilha
                     const notaFinal = (salvoInfo.notas && salvoInfo.notas.trim() !== "") ? salvoInfo.notas : item.notas;
                     const temMidia = item.media && item.media.length > 5;
+
+                    // --- LÓGICA DE INVERSÃO PARA ESTUDO ---
+                    let displayHTML = '';
+                    if (item.tipo === 'estudo') {
+                        li.classList.add('is-study');
+                        displayHTML = `
+                            <span class="interpreter">${item.musica}</span>
+                            <span class="song-title">${item.cantor}</span>
+                        `;
+                    } else {
+                        displayHTML = `
+                            <span class="interpreter">${item.cantor}</span>
+                            <span class="song-title">${item.musica}</span>
+                        `;
+                    }
 
                     li.innerHTML = `
                         <div class="li-main-row">
                             <div class="drag-handle">⋮⋮</div>
                             <input type="checkbox" class="chk-done" ${salvoInfo.done ? 'checked' : ''} onchange="this.closest('li').classList.toggle('done'); salvarEstadoLocal();">
-                            <div class="song-info">
-                                <span class="interpreter">${item.cantor}</span>
-                                <span class="song-title">${item.musica}</span>
-                            </div>
+                            <div class="song-info">${displayHTML}</div>
                             ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : '<div style="width:48px"></div>'}
                         </div>
                         <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${notaFinal}</div>
