@@ -190,11 +190,19 @@
             if (seletor) seletor.value = GID_ATUAL;
         });
 
+        //function irParaMidiasLocais() {
+        //    const seletor = document.getElementById('sheet-selector');
+        //    const gidWeb = seletor ? seletor.value : GID_ATUAL;
+        //    const gidLocal = MAP_WEB_PARA_LOCAL[gidWeb] || '285250318'; // Padrão: Domingo [cite: 1]
+        //    window.location.href = `local.html?gid=${gidLocal}`;
+        //}
         function irParaMidiasLocais() {
             const seletor = document.getElementById('sheet-selector');
             const gidWeb = seletor ? seletor.value : GID_ATUAL;
-            const gidLocal = MAP_WEB_PARA_LOCAL[gidWeb] || '285250318'; // Padrão: Domingo [cite: 1]
-            window.location.href = `local.html?gid=${gidLocal}`;
+            const gidLocal = MAP_WEB_PARA_LOCAL[gidWeb] || '285250318';
+    
+            // Altere o link abaixo com o IP/Porta exato que aparece no seu app Simple HTTP Server
+            window.location.href = `http://127.0.0.1:8080/Show.html?gid=${gidLocal}`;
         }
 
         function safeGetLocal(key) {
