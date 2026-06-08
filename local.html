@@ -29,8 +29,8 @@
         .btn-voltar {
             width: 95%; max-width: 600px; margin-bottom: 15px; padding: 12px;
             background: rgba(220, 20, 20, 0.6); border: 1px solid rgba(255,255,255,0.3);
-            color: #fff; text-decoration: none; text-align: center; font-weight: bold;
-            border-radius: 25px; text-transform: uppercase; box-sizing: border-box;
+            color: #fff; border-radius: 25px; text-transform: uppercase; box-sizing: border-box;
+            font-weight: bold; text-align: center; cursor: pointer; outline: none;
         }
 
         .master-player {
@@ -117,8 +117,7 @@
 </head>
 <body>
 
-    <!-- Link para voltar à página online/normal -->
-    <a href="index.html" class="btn-voltar">⬅️ Voltar para Áudios Web</a>
+    <button class="btn-voltar" onclick="irParaWeb()">⬅️ Voltar para Áudios Web</button>
 
     <div id="main-player-container" class="master-player glass-panel player-minimized">
         <button class="toggle-player" id="btn-toggle" onclick="togglePlayer()">▼</button>
@@ -128,7 +127,6 @@
     </div>
 
     <div class="list-selector-container">
-        
         <select id="sheet-selector" onchange="mudarLista(this.value)">
             <option value="285250318">📅 DOMINGO (Local)</option>
             <option value="2004923766">📅 SEGUNDA (Local)</option>
@@ -154,15 +152,33 @@
 
     <ul id="playlist-sortable"></ul>
 
-<script>
+    <script>
         const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUwdgFWo3-RvINecYfmj0aMZBEKTeGjMkUoJrq-QvwzFTzKRU3XiMCQkDgxsNRtxMha2bTeirKvD8N/pub?output=csv';
         const urlParams = new URLSearchParams(window.location.search);
-        let GID_ATUAL = urlParams.get('gid') || '1960210650';
+        let GID_ATUAL = urlParams.get('gid') || '285250318'; // Padrão local: Domingo [cite: 1]
+
+        // Tabela inversa de conversão: GID Local -> GID Web [cite: 1, 2]
+        const MAP_LOCAL_PARA_WEB = {
+            '285250318':  '1960210650',  // Domingo [cite: 1]
+            '2004923766': '1517164028',  // Segunda [cite: 1]
+            '38012532':   '216102701',   // Terça [cite: 1]
+            '312508322':  '911593347',   // Quarta [cite: 1]
+            '1711319483': '1593190716',  // Quinta [cite: 1]
+            '1941499967': '1611821250',  // Sexta [cite: 1]
+            '1649718070': '1644722704'   // Sábado [cite: 2]
+        };
 
         window.addEventListener('load', () => {
             const seletor = document.getElementById('sheet-selector');
             if (seletor) seletor.value = GID_ATUAL;
         });
+
+        function irParaWeb() {
+            const seletor = document.getElementById('sheet-selector');
+            const gidLocal = seletor ? seletor.value : GID_ATUAL;
+            const gidWeb = MAP_LOCAL_PARA_WEB[gidLocal] || '1960210650';
+            window.location.href = `index.html?gid=${gidWeb}`;
+        }
 
         function safeGetLocal(key) {
             try { return localStorage.getItem(key); } catch(e) { return null; }
@@ -243,19 +259,22 @@
 
         function carregar() {
             const lista = document.getElementById('playlist-sortable');
-            lista.innerHTML = '<p style="text-align:center;">Carregando faixas locais...</p>';
+            lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
             
-            const xhr = new XMLHttpRequest();
             const fullUrl = `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`;
             
-            xhr.open("GET", fullUrl, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) { renderizar(xhr.responseText); }
-                    else { lista.innerHTML = `<p style="text-align:center;">Erro de conexão.</p>`; }
-                }
-            };
-            xhr.send();
+            fetch(fullUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('Erro na rede');
+                    return response.text();
+                })
+                .then(texto => {
+                    renderizar(texto);
+                })
+                .catch(erro => {
+                    console.error(erro);
+                    lista.innerHTML = `<p style="text-align:center;">Erro de conexão ou bloqueio do navegador. <br><small>Dica: Use um app de HTTP Server local no celular.</small></p>`;
+                });
         }
 
         function renderizar(texto) {
@@ -337,7 +356,6 @@
             Sortable.create(lista, { handle: '.drag-handle', animation: 150, delayOnTouchOnly: true, onEnd: salvarEstadoLocal });
         }
 
-        // --- ALTERADO: FUNÇÃO ADAPTADA PARA REPRODUÇÃO LOCAL ---
         function tocar(tipo, media, cantor, musica) {
             const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
@@ -362,12 +380,7 @@
                 document.getElementById('btn-pause-float').style.display = 'flex';
                 
                 let url = media;
-                // Se a planilha contiver apenas o nome do arquivo (ex: "vocalize.mp3"),
-                // ele vai buscar o arquivo na pasta "audios/" localizada no seu próprio servidor
-                if (!url.includes('http')) {
-                    url = "audios/" + url; 
-                }
-                
+                // CORRIGIDO: Agora busca o arquivo diretamente na mesma pasta, sem o prefixo "audios/"
                 audio.src = url; audio.load(); audio.play();
             }
         }
