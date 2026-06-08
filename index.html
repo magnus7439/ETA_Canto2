@@ -174,16 +174,30 @@
         const urlParams = new URLSearchParams(window.location.search);
         let GID_ATUAL = urlParams.get('gid') || '1960210650';
 
+        // Tabela de correspondência: GID Online -> GID Local
+        const MAPEAMENTO_GIDS_LOCAIS = {
+            '1960210650': '285250318',   // Domingo
+            '1517164028': '2004923766',  // Segunda
+            '216102701':  '38012532',    // Terça
+            '911593347':  '312508322',   // Quarta
+            '1593190716': '1711319483',  // Quinta
+            '1611821250': '1941499967',  // Sexta
+            '1644722704': '1649718070'   // Sábado
+        };
+
         window.addEventListener('load', () => {
             const seletor = document.getElementById('sheet-selector');
             if (seletor) seletor.value = GID_ATUAL;
         });
 
         function irParaMidiasLocais() {
-            // Captura o valor diretamente do seletor para garantir o redirecionamento correto
             const seletor = document.getElementById('sheet-selector');
-            const gid = seletor ? seletor.value : GID_ATUAL;
-            window.location.href = `local.html?gid=${gid}`;
+            const gidOnline = seletor ? seletor.value : GID_ATUAL;
+            
+            // Procura o GID correspondente da lista local
+            const gidLocal = MAPEAMENTO_GIDS_LOCAIS[gidOnline] || '285250318'; 
+            
+            window.location.href = `local.html?gid=${gidLocal}`;
         }
 
         function safeGetLocal(key) {
