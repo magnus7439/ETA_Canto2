@@ -195,10 +195,26 @@
         
         const CACHE_NAME = 'canto-eta-media-v1';
 
+        // Mapeamento de GID para obter o Nome do Dia da Semana correspondente
+        const MAPA_NOMES_DIAS = {
+            '1960210650': 'DOMINGO',
+            '1517164028': 'SEGUNDA-FEIRA',
+            '216102701':  'TERÇA-FEIRA',
+            '911593347':  'QUARTA-FEIRA',
+            '1593190716': 'QUINTA-FEIRA',
+            '1611821250': 'SEXTA-FEIRA',
+            '1644722704': 'SÁBADO'
+        };
+
         window.addEventListener('load', () => {
             const seletor = document.getElementById('sheet-selector');
             if (seletor) seletor.value = GID_ATUAL;
         });
+
+        // Função auxiliar para retornar o dia da semana atual em texto limpo
+        function getNomeDiaAtual() {
+            return MAPA_NOMES_DIAS[GID_ATUAL] || "DESTE DIA";
+        }
 
         function safeGetLocal(key) {
             try { return localStorage.getItem(key); } catch(e) { return null; }
@@ -335,12 +351,14 @@
 
         async function baixarMidiasDoDia() {
             const botoes = document.querySelectorAll('#playlist-sortable .btn-cache:not(.cached)');
+            const diaSemana = getNomeDiaAtual();
+
             if (botoes.length === 0) {
-                alert('Todas as mídias desta lista já estão baixadas!');
+                alert(`Todas as mídias de ${diaSemana} já estão baixadas!`);
                 return;
             }
 
-            if (confirm(`Deseja baixar todas as ${botoes.length} mídias deste dia específico?`)) {
+            if (confirm(`Deseja baixar todas as ${botoes.length} mídias de ${diaSemana}?`)) {
                 const cache = await caches.open(CACHE_NAME);
                 for (let btn of botoes) {
                     const url = btn.dataset.url;
@@ -362,18 +380,20 @@
                         btn.innerText = '⬇️';
                     }
                 }
-                alert('Downloads do dia concluídos!');
+                alert(`Downloads de ${diaSemana} concluídos!`);
             }
         }
 
         async function limparMidiasDoDia() {
             const botoes = document.querySelectorAll('#playlist-sortable .btn-cache.cached');
+            const diaSemana = getNomeDiaAtual();
+
             if (botoes.length === 0) {
-                alert('Não há nenhuma mídia baixada nesta lista para apagar.');
+                alert(`Não há nenhuma mídia baixada na lista de ${diaSemana} para apagar.`);
                 return;
             }
 
-            if (confirm(`Tem certeza que deseja apagar as ${botoes.length} músicas baixadas DESTE DIA? As mídias dos outros dias continuarão salvas.`)) {
+            if (confirm(`Tem certeza que deseja apagar as ${botoes.length} músicas baixadas de ${diaSemana}? As mídias dos outros dias continuarão salvas.`)) {
                 const cache = await caches.open(CACHE_NAME);
                 let apagadosContador = 0;
 
@@ -388,7 +408,7 @@
                         apagadosContador++;
                     }
                 }
-                alert(`${apagadosContador} mídias deste dia foram removidas da memória!`);
+                alert(`${apagadosContador} mídias de ${diaSemana} foram removidas da memória!`);
             }
         }
 
@@ -501,6 +521,10 @@
             atualizarStatusBotoesCache();
         }
 
+        function inlineSplitCSV(linha) {
+            return inlineSplitCSV(linha); // Não alterado
+        }
+        // Correção apenas para garantir que o split funcione como o original do arquivo enviado
         function inlineSplitCSV(linha) {
             return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
         }
