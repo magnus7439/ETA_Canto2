@@ -83,9 +83,9 @@
             color: #fff; border-radius: 25px; padding: 10px; cursor: pointer; font-size: 0.85em;
             font-weight: bold; text-transform: uppercase; outline: none;
         }
-        .btn-link-local {
+        .btn-cache-action {
             flex: 1;
-            background: rgba(30, 120, 80, 0.6); border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255,255,255,0.3);
             color: #ff4; border-radius: 25px; padding: 10px; cursor: pointer; font-size: 0.85em;
             font-weight: bold; text-align: center; text-transform: uppercase;
             box-sizing: border-box; outline: none;
@@ -170,7 +170,8 @@
         
         <div class="selector-buttons-row">
             <button class="btn-reset-order" onclick="resetarOrdemLocal()">Resetar Ordem</button>
-            <button class="btn-link-local" onclick="irParaMidiasLocais()">📂 Mídias Locais</button>
+            <button class="btn-cache-action" style="background: rgba(30, 80, 180, 0.6);" onclick="baixarMidiasDoDia()">⬇️ Baixar Este Dia</button>
+            <button class="btn-cache-action" style="background: rgba(180, 30, 30, 0.6); color: #fff;" onclick="limparMidiasDoDia()">🗑️ Apagar Este Dia</button>
         </div>
     </div>
 
@@ -194,28 +195,10 @@
         
         const CACHE_NAME = 'canto-eta-media-v1';
 
-        // Tabela de conversão: GID Web -> GID Local
-        const MAP_WEB_PARA_LOCAL = {
-            '1960210650': '285250318',   // Domingo
-            '1517164028': '2004923766',  // Segunda
-            '216102701':  '38012532',    // Terça
-            '911593347':  '312508322',   // Quarta
-            '1593190716': '1711319483',  // Quinta
-            '1611821250': '1941499967',  // Sexta
-            '1644722704': '1649718070'   // Sábado
-        };
-
         window.addEventListener('load', () => {
             const seletor = document.getElementById('sheet-selector');
             if (seletor) seletor.value = GID_ATUAL;
         });
-
-        function irParaMidiasLocais() {
-            const seletor = document.getElementById('sheet-selector');
-            const gidWeb = seletor ? seletor.value : GID_ATUAL;
-            const gidLocal = MAP_WEB_PARA_LOCAL[gidWeb] || '285250318';
-            window.location.href = `http://localhost:8080/Show.html?gid=${gidLocal}`;
-        }
 
         function safeGetLocal(key) {
             try { return localStorage.getItem(key); } catch(e) { return null; }
@@ -347,6 +330,65 @@
                     btn.innerText = '🗑️';
                     btn.classList.add('cached');
                 }
+            }
+        }
+
+        async function baixarMidiasDoDia() {
+            const botoes = document.querySelectorAll('#playlist-sortable .btn-cache:not(.cached)');
+            if (botoes.length === 0) {
+                alert('Todas as mídias desta lista já estão baixadas!');
+                return;
+            }
+
+            if (confirm(`Deseja baixar todas as ${botoes.length} mídias deste dia específico?`)) {
+                const cache = await caches.open(CACHE_NAME);
+                for (let btn of botoes) {
+                    const url = btn.dataset.url;
+                    if (!url) continue;
+
+                    btn.innerText = '⏳';
+                    try {
+                        const req = new Request(url, { mode: 'cors' });
+                        const res = await fetch(req);
+                        if (res.ok) {
+                            await cache.put(req, res);
+                            btn.innerText = '🗑️';
+                            btn.classList.add('cached');
+                        } else {
+                            btn.innerText = '⬇️';
+                        }
+                    } catch (error) {
+                        console.error('Erro ao baixar:', url, error);
+                        btn.innerText = '⬇️';
+                    }
+                }
+                alert('Downloads do dia concluídos!');
+            }
+        }
+
+        async function limparMidiasDoDia() {
+            const botoes = document.querySelectorAll('#playlist-sortable .btn-cache.cached');
+            if (botoes.length === 0) {
+                alert('Não há nenhuma mídia baixada nesta lista para apagar.');
+                return;
+            }
+
+            if (confirm(`Tem certeza que deseja apagar as ${botoes.length} músicas baixadas DESTE DIA? As mídias dos outros dias continuarão salvas.`)) {
+                const cache = await caches.open(CACHE_NAME);
+                let apagadosContador = 0;
+
+                for (let btn of botoes) {
+                    const url = btn.dataset.url;
+                    if (!url) continue;
+
+                    const deletado = await cache.delete(url);
+                    if (deletado) {
+                        btn.innerText = '⬇️';
+                        btn.classList.remove('cached');
+                        apagadosContador++;
+                    }
+                }
+                alert(`${apagadosContador} mídias deste dia foram removidas da memória!`);
             }
         }
 
