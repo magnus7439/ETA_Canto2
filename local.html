@@ -19,8 +19,11 @@
             transition: background 0.3s;
         }
         body.modo-gerenciamento {
-            background-image: none !important;
-            background-color: #1a0505 !important; /* Fundo avermelhado escuro indicando modo exclusão */
+            background-image: url('image_del.png') !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            background-attachment: fixed !important;
         }
 
         .glass-panel {
@@ -31,8 +34,8 @@
             transition: background 0.3s, border-color 0.3s;
         }
         body.modo-gerenciamento .glass-panel {
-            background: rgba(40, 10, 10, 0.9) !important;
-            border: 1px solid rgba(255, 80, 80, 0.4) !important;
+            background: rgba(40, 10, 10, 0.75) !important;
+            border: 1px solid rgba(255, 80, 80, 0.5) !important;
         }
 
         .master-player {
@@ -158,15 +161,19 @@
             color: #fff;
         }
         .btn-delete-sheet {
-            background: rgba(220, 20, 20, 0.8); color: #fff; border: none;
+            background: rgba(220, 20, 20, 0.9); color: #fff; border: none;
             border-radius: 50%; width: 48px; height: 48px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; font-size: 1.2em;
+            display: none; /* Oculto por padrão na lista principal */
+            align-items: center; justify-content: center; font-size: 1.2em;
         }
         
-        /* Oculta botões padrão de play/cache quando no modo gerenciamento */
+        /* Oculta botões padrão de play/cache e exibe o de deletar APENAS no modo gerenciamento */
         body.modo-gerenciamento .btn-play, 
         body.modo-gerenciamento .btn-cache {
             display: none !important;
+        }
+        body.modo-gerenciamento .btn-delete-sheet {
+            display: flex !important;
         }
 
         .done { opacity: 0.3; filter: grayscale(100%); }
@@ -346,7 +353,6 @@
         async function deletarItemPlanilha(musica, cantor, observacao, elementoLi) {
             const diaSemana = getNomeDiaAtual();
             
-            // Montagem exata da string que o Apps Script busca na aba correspondente ao dia
             let infoConcatenada = `${musica} (${cantor})`;
             if (observacao && observacao.trim() !== "") {
                 infoConcatenada += ` - ${observacao}`;
