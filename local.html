@@ -38,27 +38,19 @@
             border: 1px solid rgba(255, 80, 80, 0.5) !important;
         }
 
-        .master-player {
+                .master-player {
             position: sticky; top: 10px; width: 95%; max-width: 600px;
             padding: 15px; z-index: 100; text-align: center; margin-bottom: 10px;
+            overflow: auto; resize: vertical; min-height: 45px;
         }
-        .player-minimized { overflow: hidden; resize: none; min-height: 45px; padding-bottom: 10px; }
+
         .player-minimized #yt-player, .player-minimized audio { display: none !important; }
+        .player-minimized { resize: none; min-height: 45px; padding-bottom: 10px; }
         
         #now-playing { font-weight: bold; margin-bottom: 8px; font-size: 1em; padding-right: 40px; }
-        audio { width: 100%; border-radius: 30px; margin-top: 10px; display: none; }
-        
-        /* Ajuste definitivo para o player do YouTube assumir tamanho correto */
-        #yt-player { 
-            display: none; 
-            width: 100% !important; 
-            height: auto !important; 
-            aspect-ratio: 16 / 9 !important; 
-            border-radius: 10px; 
-            border: none; 
-            margin-top: 15px; 
-        }
-        
+        audio { width: 100%; border-radius: 30px; margin-top: 10px; }
+        #yt-player { display: none; width: 100%; aspect-ratio: 16/9; border-radius: 10px; border: none; margin-top: 15px; }
+
         .toggle-player {
             position: absolute; top: 12px; right: 15px;
             background: rgba(255,255,255,0.1); border: none; color: #fff;
