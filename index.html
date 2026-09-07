@@ -16,6 +16,14 @@
             background-size: cover; background-position: center;
             background-repeat: no-repeat; background-attachment: fixed;
             padding-bottom: 120px; 
+            transition: background 0.3s;
+        }
+        body.modo-gerenciamento {
+            background-image: url('image_del.png') !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            background-attachment: fixed !important;
         }
 
         .glass-panel {
@@ -23,20 +31,33 @@
             border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            transition: background 0.3s, border-color 0.3s;
+        }
+        body.modo-gerenciamento .glass-panel {
+            background: rgba(40, 10, 10, 0.75) !important;
+            border: 1px solid rgba(255, 80, 80, 0.5) !important;
         }
 
-        .master-player {
-            position: sticky; top: 10px; width: 95%; max-width: 600px;
-            padding: 15px; z-index: 100; text-align: center; margin-bottom: 10px;
-            overflow: auto; resize: vertical; min-height: 45px;
+        .master-player {            
+            position: sticky; top: 10px; width: 95%; max-width: 600px;            
+            padding: 15px; z-index: 100; text-align: center; margin-bottom: 10px;            
+            overflow: hidden; min-height: 45px;
+            box-sizing: border-box;
         }
-
-        .player-minimized #yt-player, .player-minimized audio { display: none !important; }
-        .player-minimized { resize: none; min-height: 45px; padding-bottom: 10px; }
+        .player-minimized { resize: none; min-height: 45px; padding-bottom: 10px; }        
+        .player-minimized #yt-player, .player-minimized audio { display: none !important; }        
         
         #now-playing { font-weight: bold; margin-bottom: 8px; font-size: 1em; padding-right: 40px; }
-        audio { width: 100%; border-radius: 30px; margin-top: 10px; }
-        #yt-player { display: none; width: 100%; aspect-ratio: 16/9; border-radius: 10px; border: none; margin-top: 15px; }
+        audio { width: 100%; border-radius: 30px; margin-top: 10px; display: none; }
+        
+        #yt-player { 
+            display: none; 
+            width: 100%; 
+            aspect-ratio: 16/9; 
+            border-radius: 10px; 
+            border: none; 
+            margin-top: 15px; 
+        }
 
         .toggle-player {
             position: absolute; top: 12px; right: 15px;
@@ -44,7 +65,6 @@
             border-radius: 50%; width: 32px; height: 32px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; font-weight: bold;
         }
-
         .floating-controls {
             position: fixed; bottom: 20px; left: 50%;
             transform: translateX(-50%); display: none; 
@@ -90,6 +110,18 @@
             font-weight: bold; text-align: center; text-transform: uppercase;
             box-sizing: border-box; outline: none;
         }
+        .btn-gerenciar-toggle {
+            background: rgba(180, 80, 20, 0.6); color: #fff;
+        }
+        body.modo-gerenciamento .btn-gerenciar-toggle {
+            background: rgba(220, 40, 40, 0.9);
+            animation: pulsar 1.5s infinite;
+        }
+        @keyframes pulsar {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
 
         /* --- BARRA DE BUSCA --- */
         .search-container { width: 95%; max-width: 480px; margin-bottom: 20px; position: relative; }
@@ -123,22 +155,33 @@
             display: flex;
             gap: 8px;
         }
-
         .btn-play {
             background: rgba(255, 255, 255, 0.1); color: #ff4; border: none;
             border-radius: 50%; width: 48px; height: 48px; cursor: pointer; font-size: 1.3em;
             display: flex; align-items: center; justify-content: center;
         }
-
         .btn-cache {
             background: rgba(255, 255, 255, 0.1); color: #fff; border: none;
             border-radius: 50%; width: 48px; height: 48px; cursor: pointer; font-size: 1.1em;
             display: flex; align-items: center; justify-content: center; transition: 0.3s background;
         }
-
         .btn-cache.cached {
             background: rgba(30, 180, 80, 0.6);
             color: #fff;
+        }
+        .btn-delete-sheet {
+            background: rgba(220, 20, 20, 0.9); color: #fff; border: none;
+            border-radius: 50%; width: 48px; height: 48px; cursor: pointer;
+            display: none; 
+            align-items: center; justify-content: center; font-size: 1.2em;
+        }
+        
+        body.modo-gerenciamento .btn-play, 
+        body.modo-gerenciamento .btn-cache {
+            display: none !important;
+        }
+        body.modo-gerenciamento .btn-delete-sheet {
+            display: flex !important;
         }
 
         .done { opacity: 0.3; filter: grayscale(100%); }
@@ -149,7 +192,6 @@
     </style>
 </head>
 <body>
-
     <div id="main-player-container" class="master-player glass-panel player-minimized">
         <button class="toggle-player" id="btn-toggle" onclick="togglePlayer()">▼</button>
         <div id="now-playing">Selecione uma faixa</div>
@@ -173,6 +215,10 @@
             <button class="btn-cache-action" style="background: rgba(30, 80, 180, 0.6);" onclick="baixarMidiasDoDia()">⬇️ Baixar Este Dia</button>
             <button class="btn-cache-action" style="background: rgba(180, 30, 30, 0.6); color: #fff;" onclick="limparMidiasDoDia()">🗑️ Apagar Este Dia</button>
         </div>
+
+        <div class="selector-buttons-row">
+            <button class="btn-cache-action btn-gerenciar-toggle" onclick="alternarModoGerenciamento()" id="btn-modo-gerenciar">⚙️ Modo Apagar Itens</button>
+        </div>
     </div>
 
     <div id="float-ctrl" class="floating-controls">
@@ -190,12 +236,14 @@
 
     <script>
         const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSUwdgFWo3-RvINecYfmj0aMZBEKTeGjMkUoJrq-QvwzFTzKRU3XiMCQkDgxsNRtxMha2bTeirKvD8N/pub?output=csv';
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxqmg3eUhrIuoc079APaiQ028J43eu-kOjw0i9qWoG8cpFAODdD7f3CtwNQHIG0NxNq/exec";
+
         const urlParams = new URLSearchParams(window.location.search);
         let GID_ATUAL = urlParams.get('gid') || '1960210650';
         
         const CACHE_NAME = 'canto-eta-media-v1';
+        let modoGerenciamentoAtivo = false;
 
-        // Mapeamento de GID para obter o Nome do Dia da Semana correspondente
         const MAPA_NOMES_DIAS = {
             '1960210650': 'DOMINGO',
             '1517164028': 'SEGUNDA-FEIRA',
@@ -211,15 +259,13 @@
             if (seletor) seletor.value = GID_ATUAL;
         });
 
-        // Função auxiliar para retornar o dia da semana atual em texto limpo
         function getNomeDiaAtual() {
-            return MAPA_NOMES_DIAS[GID_ATUAL] || "DESTE DIA";
+            return MAPA_NOMES_DIAS[GID_ATUAL] || "DOMINGO";
         }
 
         function safeGetLocal(key) {
             try { return localStorage.getItem(key); } catch(e) { return null; }
         }
-
         function safeSetLocal(key, value) {
             try { localStorage.setItem(key, value); } catch(e) {}
         }
@@ -250,6 +296,8 @@
             document.getElementById('float-ctrl').style.display = 'none';
             audio.pause(); audio.src = ""; yt.src = "";
             audio.style.display = 'none'; yt.style.display = 'none';
+            document.getElementById('main-player-container').classList.add('player-minimized');
+            document.getElementById('btn-toggle').innerText = '▼';
             document.getElementById('now-playing').innerText = "Selecione uma faixa";
         }
 
@@ -273,7 +321,10 @@
             }
         }
 
-        function mudarLista(novoGid) { GID_ATUAL = novoGid; carregar(); }
+        function mudarLista(novoGid) { 
+            GID_ATUAL = novoGid; 
+            carregar(); 
+        }
 
         function togglePlayer() {
             const container = document.getElementById('main-player-container');
@@ -293,7 +344,44 @@
 
         function limparBusca() { document.getElementById('search-input').value = ''; filtrarLista(); }
 
-        // --- FUNÇÕES DE CACHE ---
+        function alternarModoGerenciamento() {
+            modoGerenciamentoAtivo = !modoGerenciamentoAtivo;
+            const body = document.body;
+            const btnModo = document.getElementById('btn-modo-gerenciar');
+
+            if (modoGerenciamentoAtivo) {
+                body.classList.add('modo-gerenciamento');
+                btnModo.innerText = "✖ Sair do Modo Apagar";
+            } else {
+                body.classList.remove('modo-gerenciamento');
+                btnModo.innerText = "⚙️ Modo Apagar Itens";
+            }
+        }
+
+        async function deletarItemPlanilha(musica, cantor, observacao, elementoLi) {
+            const diaSemana = getNomeDiaAtual();
+            let infoConcatenada = `${musica} (${cantor})`;
+            if (observacao && observacao.trim() !== "") {
+                infoConcatenada += ` - ${observacao}`;
+            }
+
+            if (!confirm(`Deseja realmente apagar "${musica}" da planilha de ${diaSemana}?`)) return;
+
+            try {
+                elementoLi.style.opacity = "0.3";
+                const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}`;
+
+                await fetch(urlCompleta, { method: 'GET', mode: 'no-cors' });
+                elementoLi.remove();
+                salvarEstadoLocal();
+                alert("Comando de exclusão enviado para a planilha!");
+            } catch (error) {
+                console.error("Erro ao excluir da planilha:", error);
+                alert("Houve um erro ao tentar comunicar com a planilha.");
+                elementoLi.style.opacity = "1";
+            }
+        }
+
         function normalizarUrlMidia(media) {
             if (!media) return '';
             let url = media;
@@ -307,30 +395,25 @@
 
         async function toggleCache(url, btnElement) {
             if (!url) return;
-            
             try {
                 const cache = await caches.open(CACHE_NAME);
                 const response = await cache.match(url);
-                
                 if (response) {
                     await cache.delete(url);
                     btnElement.innerText = '⬇️';
                     btnElement.classList.remove('cached');
                 } else {
                     btnElement.innerText = '⏳';
-                    
                     const req = new Request(url, { mode: 'cors' });
                     const res = await fetch(req);
-                    
-                    if (!res.ok) throw new Error('Falha no download da origem');
-                    
+                    if (!res.ok) throw new Error('Falha no download');
                     await cache.put(req, res);
                     btnElement.innerText = '🗑️';
                     btnElement.classList.add('cached');
                 }
             } catch (error) {
                 console.error('Erro na Cache API:', error);
-                alert('Não foi possível salvar o arquivo. Verifique restrições de CORS (Cross-Origin).');
+                alert('Não foi possível salvar o arquivo.');
                 btnElement.innerText = '⬇️';
             }
         }
@@ -338,7 +421,6 @@
         async function atualizarStatusBotoesCache() {
             const botoes = document.querySelectorAll('.btn-cache');
             const cache = await caches.open(CACHE_NAME);
-            
             for (let btn of botoes) {
                 const url = btn.dataset.url;
                 const match = await cache.match(url);
@@ -363,7 +445,6 @@
                 for (let btn of botoes) {
                     const url = btn.dataset.url;
                     if (!url) continue;
-
                     btn.innerText = '⏳';
                     try {
                         const req = new Request(url, { mode: 'cors' });
@@ -376,7 +457,6 @@
                             btn.innerText = '⬇️';
                         }
                     } catch (error) {
-                        console.error('Erro ao baixar:', url, error);
                         btn.innerText = '⬇️';
                     }
                 }
@@ -393,14 +473,12 @@
                 return;
             }
 
-            if (confirm(`Tem certeza que deseja apagar as ${botoes.length} músicas baixadas de ${diaSemana}? As mídias dos outros dias continuarão salvas.`)) {
+            if (confirm(`Tem certeza que deseja apagar as ${botoes.length} músicas baixadas de ${diaSemana}?`)) {
                 const cache = await caches.open(CACHE_NAME);
                 let apagadosContador = 0;
-
                 for (let btn of botoes) {
                     const url = btn.dataset.url;
                     if (!url) continue;
-
                     const deletado = await cache.delete(url);
                     if (deletado) {
                         btn.innerText = '⬇️';
@@ -429,6 +507,10 @@
             xhr.send();
         }
 
+        function inlineSplitCSV(linha) {
+            return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        }
+
         function renderizar(texto) {
             const lista = document.getElementById('playlist-sortable');
             const linhas = texto.split('\n').map(l => l.trim()).filter(l => l);
@@ -449,7 +531,6 @@
             const salva = safeGetLocal('ordem_' + GID_ATUAL);
             let idsOrdenados = Object.keys(dadosMap);
             let estadosCheck = {};
-
             if (salva) {
                 try {
                     const objSalvo = JSON.parse(salva);
@@ -483,26 +564,22 @@
                     let displayHTML = '';
                     if (item.tipo === 'estudo') {
                         li.classList.add('is-study');
-                        displayHTML = `
-                            <span class="interpreter">${item.musica}</span>
-                            <span class="song-title">${item.cantor}</span>
-                        `;
+                        displayHTML = `<span class="interpreter">${item.musica}</span><span class="song-title">${item.cantor}</span>`;
                     } else {
-                        displayHTML = `
-                            <span class="interpreter">${item.cantor}</span>
-                            <span class="song-title">${item.musica}</span>
-                        `;
+                        displayHTML = `<span class="interpreter">${item.cantor}</span><span class="song-title">${item.musica}</span>`;
                     }
 
-                    let botoesAcao = '<div style="width:48px"></div>';
-                    if (temMidia) {
-                        botoesAcao = `
-                            <div class="action-buttons">
-                                ${!ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
-                                <button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>
-                            </div>
-                        `;
-                    }
+                    const escapedMusica = item.musica.replace(/'/g, "\\'");
+                    const escapedCantor = item.cantor.replace(/'/g, "\\'");
+                    const escapedNotes = (item.notes || '').replace(/'/g, "\\'");
+
+                    let botoesAcao = `
+                        <div class="action-buttons">
+                            ${temMidia && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
+                            ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : ''}
+                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha('${escapedMusica}', '${escapedCantor}', '${escapedNotes}', this.closest('li'))" title="Excluir da Planilha">🗑️</button>
+                        </div>
+                    `;
 
                     li.innerHTML = `
                         <div class="li-main-row">
@@ -521,19 +598,14 @@
             atualizarStatusBotoesCache();
         }
 
-        function inlineSplitCSV(linha) {
-            return inlineSplitCSV(linha); // Não alterado
-        }
-        // Correção apenas para garantir que o split funcione como o original do arquivo enviado
-        function inlineSplitCSV(linha) {
-            return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-        }
-
         async function tocar(tipo, media, cantor, musica) {
             const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
-            document.getElementById('main-player-container').classList.remove('player-minimized');
+            
+            const playerContainer = document.getElementById('main-player-container');
+            playerContainer.classList.remove('player-minimized');
             document.getElementById('btn-toggle').innerText = '✕';
+            
             document.getElementById('now-playing').innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
             document.getElementById('float-ctrl').style.display = 'flex';
             document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
@@ -553,7 +625,6 @@
                 document.getElementById('btn-pause-float').style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
-                
                 try {
                     const cache = await caches.open(CACHE_NAME);
                     const cachedRes = await cache.match(url);
@@ -561,15 +632,14 @@
                         const blob = await cachedRes.blob();
                         url = URL.createObjectURL(blob); 
                     }
-                } catch (e) {
-                    console.warn('Erro ao ler cache:', e);
-                }
+                } catch (e) {}
 
                 audio.src = url; 
                 audio.load(); 
                 audio.play();
             }
         }
+
         window.addEventListener('DOMContentLoaded', carregar);
     </script>
 </body>
