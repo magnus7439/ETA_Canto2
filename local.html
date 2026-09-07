@@ -46,8 +46,18 @@
         .player-minimized #yt-player, .player-minimized audio { display: none !important; }
         
         #now-playing { font-weight: bold; margin-bottom: 8px; font-size: 1em; padding-right: 40px; }
-        audio { width: 100%; border-radius: 30px; margin-top: 10px; }
-        #yt-player { display: none; width: 100%; aspect-ratio: 16/9; border-radius: 10px; border: none; margin-top: 15px; }
+        audio { width: 100%; border-radius: 30px; margin-top: 10px; display: none; }
+        
+        /* Ajuste definitivo para o player do YouTube assumir tamanho correto */
+        #yt-player { 
+            display: none; 
+            width: 100% !important; 
+            height: auto !important; 
+            aspect-ratio: 16 / 9 !important; 
+            border-radius: 10px; 
+            border: none; 
+            margin-top: 15px; 
+        }
         
         .toggle-player {
             position: absolute; top: 12px; right: 15px;
@@ -162,11 +172,10 @@
         .btn-delete-sheet {
             background: rgba(220, 20, 20, 0.9); color: #fff; border: none;
             border-radius: 50%; width: 48px; height: 48px; cursor: pointer;
-            display: none; /* Oculto por padrão na lista principal */
+            display: none; 
             align-items: center; justify-content: center; font-size: 1.2em;
         }
         
-        /* Oculta botões padrão de play/cache e exibe o de deletar APENAS no modo gerenciamento */
         body.modo-gerenciamento .btn-play, 
         body.modo-gerenciamento .btn-cache {
             display: none !important;
@@ -287,6 +296,8 @@
             document.getElementById('float-ctrl').style.display = 'none';
             audio.pause(); audio.src = ""; yt.src = "";
             audio.style.display = 'none'; yt.style.display = 'none';
+            document.getElementById('main-player-container').classList.add('player-minimized');
+            document.getElementById('btn-toggle').innerText = '▼';
             document.getElementById('now-playing').innerText = "Selecione uma faixa";
         }
 
@@ -333,7 +344,6 @@
 
         function limparBusca() { document.getElementById('search-input').value = ''; filtrarLista(); }
 
-        // --- CONTROLE DO MODO GERENCIAMENTO (APAGAR) ---
         function alternarModoGerenciamento() {
             modoGerenciamentoAtivo = !modoGerenciamentoAtivo;
             const body = document.body;
@@ -348,10 +358,8 @@
             }
         }
 
-        // --- FUNÇÃO DE DELETAR DA PLANILHA ---
         async function deletarItemPlanilha(musica, cantor, observacao, elementoLi) {
             const diaSemana = getNomeDiaAtual();
-            
             let infoConcatenada = `${musica} (${cantor})`;
             if (observacao && observacao.trim() !== "") {
                 infoConcatenada += ` - ${observacao}`;
@@ -361,18 +369,12 @@
 
             try {
                 elementoLi.style.opacity = "0.3";
-                
                 const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}`;
 
-                await fetch(urlCompleta, {
-                    method: 'GET',
-                    mode: 'no-cors'
-                });
-
+                await fetch(urlCompleta, { method: 'GET', mode: 'no-cors' });
                 elementoLi.remove();
                 salvarEstadoLocal();
                 alert("Comando de exclusão enviado para a planilha!");
-
             } catch (error) {
                 console.error("Erro ao excluir da planilha:", error);
                 alert("Houve um erro ao tentar comunicar com a planilha.");
@@ -380,7 +382,6 @@
             }
         }
 
-        // --- FUNÇÕES DE CACHE ---
         function normalizarUrlMidia(media) {
             if (!media) return '';
             let url = media;
@@ -405,14 +406,14 @@
                     btnElement.innerText = '⏳';
                     const req = new Request(url, { mode: 'cors' });
                     const res = await fetch(req);
-                    if (!res.ok) throw new Error('Falha no download da origem');
+                    if (!res.ok) throw new Error('Falha no download');
                     await cache.put(req, res);
                     btnElement.innerText = '🗑️';
                     btnElement.classList.add('cached');
                 }
             } catch (error) {
                 console.error('Erro na Cache API:', error);
-                alert('Não foi possível salvar o arquivo. Verifique restrições de CORS.');
+                alert('Não foi possível salvar o arquivo.');
                 btnElement.innerText = '⬇️';
             }
         }
@@ -456,7 +457,6 @@
                             btn.innerText = '⬇️';
                         }
                     } catch (error) {
-                        console.error('Erro ao baixar:', url, error);
                         btn.innerText = '⬇️';
                     }
                 }
@@ -601,8 +601,12 @@
         async function tocar(tipo, media, cantor, musica) {
             const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
-            document.getElementById('main-player-container').classList.remove('player-minimized');
+            
+            // Força a remoção do player-minimized e exibe o painel completo
+            const playerContainer = document.getElementById('main-player-container');
+            playerContainer.classList.remove('player-minimized');
             document.getElementById('btn-toggle').innerText = '✕';
+            
             document.getElementById('now-playing').innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
             document.getElementById('float-ctrl').style.display = 'flex';
             document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
@@ -629,9 +633,7 @@
                         const blob = await cachedRes.blob();
                         url = URL.createObjectURL(blob); 
                     }
-                } catch (e) {
-                    console.warn('Erro ao ler cache:', e);
-                }
+                } catch (e) {}
 
                 audio.src = url; 
                 audio.load(); 
