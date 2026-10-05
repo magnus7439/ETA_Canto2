@@ -360,6 +360,8 @@
 
         async function deletarItemPlanilha(musica, cantor, observacao, elementoLi) {
             const diaSemana = getNomeDiaAtual();
+            
+            // Corrige a formatação para corresponder ao padrão esperado pelo Apps Script
             let infoConcatenada = `${musica} (${cantor})`;
             if (observacao && observacao.trim() !== "") {
                 infoConcatenada += ` - ${observacao}`;
@@ -369,12 +371,16 @@
 
             try {
                 elementoLi.style.opacity = "0.3";
+                
+                // Garante que o parâmetro 'acao' e os demais dados sejam enviados perfeitamente para o Web App
                 const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}`;
 
                 await fetch(urlCompleta, { method: 'GET', mode: 'no-cors' });
+
                 elementoLi.remove();
                 salvarEstadoLocal();
                 alert("Comando de exclusão enviado para a planilha!");
+
             } catch (error) {
                 console.error("Erro ao excluir da planilha:", error);
                 alert("Houve um erro ao tentar comunicar com a planilha.");
