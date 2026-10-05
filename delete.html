@@ -361,18 +361,18 @@
         async function deletarItemPlanilha(elementoLi) {
             const diaSemana = getNomeDiaAtual();
             
-            // Extrai exatamente o texto renderizado na linha, espelhando a função formatarStringItem do backend
-            const col1 = elementoLi.querySelector('.interpreter')?.innerText || '';
-            const col2 = elementoLi.querySelector('.song-title')?.innerText || '';
-            const col3 = elementoLi.querySelector('.notes-field')?.innerText || '';
+            // Extrai os campos visíveis da linha correspondente
+            const part1 = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+            const part2 = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
+            const notesField = elementoLi.querySelector('.notes-field')?.innerText.trim() || '';
 
-            // Se for do tipo estudo, a ordem na exibição se inverte visualmente, mas no backend tratamos de forma consistente
-            let infoConcatenada = `${col2} (${col1})`;
+            // Reconstrói exatamente no formato gerado pelo formatarStringItem do Apps Script: Música (Cantor) - Observação
+            let infoConcatenada = `${part2} (${part1})`;
             if (elementoLi.classList.contains('is-study')) {
-                infoConcatenada = `${col1} (${col2})`;
+                infoConcatenada = `${part1} (${part2})`;
             }
-            if (col3 && col3.trim() !== "") {
-                infoConcatenada += ` - ${col3}`;
+            if (notesField !== "") {
+                infoConcatenada += ` - ${notesField}`;
             }
 
             if (!confirm(`Deseja realmente apagar este item da planilha de ${diaSemana}?`)) return;
