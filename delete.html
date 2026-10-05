@@ -358,29 +358,34 @@
             }
         }
 
-        async function deletarItemPlanilha(musica, cantor, observacao, elementoLi) {
+        async function deletarItemPlanilha(elementoLi) {
             const diaSemana = getNomeDiaAtual();
             
-            // Corrige a formatação para corresponder ao padrão esperado pelo Apps Script
-            let infoConcatenada = `${musica} (${cantor})`;
-            if (observacao && observacao.trim() !== "") {
-                infoConcatenada += ` - ${observacao}`;
+            // Extrai exatamente o texto renderizado na linha, espelhando a função formatarStringItem do backend
+            const col1 = elementoLi.querySelector('.interpreter')?.innerText || '';
+            const col2 = elementoLi.querySelector('.song-title')?.innerText || '';
+            const col3 = elementoLi.querySelector('.notes-field')?.innerText || '';
+
+            // Se for do tipo estudo, a ordem na exibição se inverte visualmente, mas no backend tratamos de forma consistente
+            let infoConcatenada = `${col2} (${col1})`;
+            if (elementoLi.classList.contains('is-study')) {
+                infoConcatenada = `${col1} (${col2})`;
+            }
+            if (col3 && col3.trim() !== "") {
+                infoConcatenada += ` - ${col3}`;
             }
 
-            if (!confirm(`Deseja realmente apagar "${musica}" da planilha de ${diaSemana}?`)) return;
+            if (!confirm(`Deseja realmente apagar este item da planilha de ${diaSemana}?`)) return;
 
             try {
                 elementoLi.style.opacity = "0.3";
-                
-                // Garante que o parâmetro 'acao' e os demais dados sejam enviados perfeitamente para o Web App
                 const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}`;
 
                 await fetch(urlCompleta, { method: 'GET', mode: 'no-cors' });
-
+                
                 elementoLi.remove();
                 salvarEstadoLocal();
                 alert("Comando de exclusão enviado para a planilha!");
-
             } catch (error) {
                 console.error("Erro ao excluir da planilha:", error);
                 alert("Houve um erro ao tentar comunicar com a planilha.");
@@ -575,15 +580,11 @@
                         displayHTML = `<span class="interpreter">${item.cantor}</span><span class="song-title">${item.musica}</span>`;
                     }
 
-                    const escapedMusica = item.musica.replace(/'/g, "\\'");
-                    const escapedCantor = item.cantor.replace(/'/g, "\\'");
-                    const escapedNotes = (item.notes || '').replace(/'/g, "\\'");
-
                     let botoesAcao = `
                         <div class="action-buttons">
                             ${temMidia && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
                             ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : ''}
-                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha('${escapedMusica}', '${escapedCantor}', '${escapedNotes}', this.closest('li'))" title="Excluir da Planilha">🗑️</button>
+                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir da Planilha">🗑️</button>
                         </div>
                     `;
 
