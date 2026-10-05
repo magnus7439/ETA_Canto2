@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA - Roberto</title>
+    <title>Canto ETA - Roberto.</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -207,7 +207,7 @@
             <option value="911593347">📅 QUARTA-FEIRA</option>
             <option value="1593190716">📅 QUINTA-FEIRA</option>
             <option value="1611821250">📅 SEXTA-FEIRA</option>
-            <option value="1644722704">📅 SÁBADO</option>
+            <option value="1644722704">📅 SABADO</option>
         </select>
         
         <div class="selector-buttons-row">
@@ -246,12 +246,12 @@
 
         const MAPA_NOMES_DIAS = {
             '1960210650': 'DOMINGO',
-            '1517164028': 'SEGUNDA-FEIRA',
-            '216102701':  'TERÇA-FEIRA',
-            '911593347':  'QUARTA-FEIRA',
-            '1593190716': 'QUINTA-FEIRA',
-            '1611821250': 'SEXTA-FEIRA',
-            '1644722704': 'SÁBADO'
+            '1517164028': 'SEGUNDA',
+            '216102701':  'TERÇA',
+            '911593347':  'QUARTA',
+            '1593190716': 'QUINTA',
+            '1611821250': 'SEXTA',
+            '1644722704': 'SABADO'
         };
 
         window.addEventListener('load', () => {
@@ -358,20 +358,31 @@
             }
         }
 
-        async function deletarItemPlanilha(musica, cantor, observacao, elementoLi) {
+        async function deletarItemPlanilha(elementoLi) {
             const diaSemana = getNomeDiaAtual();
-            let infoConcatenada = `${musica} (${cantor})`;
-            if (observacao && observacao.trim() !== "") {
-                infoConcatenada += ` - ${observacao}`;
+            
+            // Extrai os campos visíveis da linha correspondente
+            const part1 = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+            const part2 = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
+            const notesField = elementoLi.querySelector('.notes-field')?.innerText.trim() || '';
+
+            // Reconstrói exatamente no formato gerado pelo formatarStringItem do Apps Script: Música (Cantor) - Observação
+            let infoConcatenada = `${part2} (${part1})`;
+            if (elementoLi.classList.contains('is-study')) {
+                infoConcatenada = `${part1} (${part2})`;
+            }
+            if (notesField !== "") {
+                infoConcatenada += ` - ${notesField}`;
             }
 
-            if (!confirm(`Deseja realmente apagar "${musica}" da planilha de ${diaSemana}?`)) return;
+            if (!confirm(`Deseja realmente apagar este item da planilha de ${diaSemana}?`)) return;
 
             try {
                 elementoLi.style.opacity = "0.3";
                 const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}`;
 
                 await fetch(urlCompleta, { method: 'GET', mode: 'no-cors' });
+                
                 elementoLi.remove();
                 salvarEstadoLocal();
                 alert("Comando de exclusão enviado para a planilha!");
@@ -569,15 +580,11 @@
                         displayHTML = `<span class="interpreter">${item.cantor}</span><span class="song-title">${item.musica}</span>`;
                     }
 
-                    const escapedMusica = item.musica.replace(/'/g, "\\'");
-                    const escapedCantor = item.cantor.replace(/'/g, "\\'");
-                    const escapedNotes = (item.notes || '').replace(/'/g, "\\'");
-
                     let botoesAcao = `
                         <div class="action-buttons">
                             ${temMidia && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
                             ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : ''}
-                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha('${escapedMusica}', '${escapedCantor}', '${escapedNotes}', this.closest('li'))" title="Excluir da Planilha">🗑️</button>
+                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir da Planilha">🗑️</button>
                         </div>
                     `;
 
