@@ -353,7 +353,7 @@
             }
         }
 
-        function normalizarUrlMidia(media) {
+function normalizarUrlMidia(media) {
             if (!media) return '';
             let url = media.trim();
             if (url.includes('dropbox.com')) {
@@ -361,9 +361,6 @@
             } else if (url.includes('drive.google.com') && url.includes('/d/')) {
                 const id = url.split('/d/')[1].split('/')[0];
                 return `https://docs.google.com/uc?export=download&id=${id}`;
-            } else if (!url.includes('http://') && !url.includes('https://')) {
-                // Se for apenas o nome do arquivo (ex: som.mp3), aponta para a raiz do GitHub Pages atual
-                return window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1) + url;
             }
             return url;
         }
@@ -692,20 +689,26 @@
                 let url = normalizarUrlMidia(media);
 
                 try {
+                    // 1. Libera o áudio no evento de clique
                     await Tone.start();
-                    tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
-                    
-                    tonePlayer = new Tone.Player({
-                        url: url,
-                        autostart: true,
-                        onload: () => {
-                            document.getElementById('time-total').innerText = formatarTempo(tonePlayer.buffer.duration);
-                            iniciarMonitoramentoProgressoTone();
-                        }
-                    }).connect(tonePitchShift);
+
+                    // 2. Carrega primeiro o buffer com Tone.Buffer (evita o erro de decodificação no constructor)
+                    const buffer = new Tone.ToneAudioBuffer(url, async () => {
+                        tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
+                        
+                        tonePlayer = new Tone.Player(buffer).connect(tonePitchShift);
+                        tonePlayer.start(0);
+
+                        document.getElementById('time-total').innerText = formatarTempo(buffer.duration);
+                        iniciarMonitoramentoProgressoTone();
+                    }, (err) => {
+                        console.error("Erro no carregamento do buffer:", err);
+                        alert("Erro ao decodificar o arquivo de áudio. Verifique o link e tente novamente.");
+                    });
+
                 } catch (err) {
-                    console.error("Erro ao reproduzir com Tone.js:", err);
-                    alert("Erro ao decodificar o áudio. Verifique se o arquivo existe.");
+                    console.error("Erro ao inicializar Tone:", err);
+                    alert("Erro ao inicializar o player de áudio.");
                 }
             }
         }
