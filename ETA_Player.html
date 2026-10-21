@@ -257,18 +257,15 @@
         const urlParams = new URLSearchParams(window.location.search);
         let GID_ATUAL = urlParams.get('gid') || '1960210650';
         
-        const CACHE_NAME = 'canto-eta-media-v4';
+        const CACHE_NAME = 'canto-eta-media-v5';
         let modoGerenciamentoAtivo = false;
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
 
-        let audioBufferGlobal = null;
+        let audioElementNativo = null;
         let tonePlayer = null;
         let tonePitchShift = null;
         let progressInterval = null;
-        let isPlaying = false;
-        let pauseOffset = 0;
-        let playbackStartTime = 0;
 
         const NOTAS_CROMATICAS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const NOTAS_FLAT_MAP = { "Db":"C#", "Eb":"D#", "Gb":"F#", "Ab":"G#", "Bb":"A#" };
@@ -385,20 +382,23 @@
         }
 
         function pararTonePlayer() {
-            if (tonePlayer) {
-                try { tonePlayer.stop(); tonePlayer.dispose(); } catch(e){}
-                tonePlayer = null;
+            if (audioElementNativo) {
+                audioElementNativo.pause();
+                audioElementNativo.src = "";
+                audioElementNativo = null;
             }
             if (tonePitchShift) {
                 try { tonePitchShift.dispose(); } catch(e){}
                 tonePitchShift = null;
             }
+            if (tonePlayer) {
+                try { tonePlayer.disconnect(); } catch(e){}
+                tonePlayer = null;
+            }
             if (progressInterval) {
                 clearInterval(progressInterval);
                 progressInterval = null;
             }
-            isPlaying = false;
-            pauseOffset = 0;
         }
 
         function stopAll() {
@@ -413,7 +413,6 @@
 
             if (yt) { yt.src = ""; yt.style.display = 'none'; }
             pararTonePlayer();
-            audioBufferGlobal = null;
             currentSemitones = 0;
             tomOriginalExtraido = null;
             atualizarDisplayPitch();
@@ -445,63 +444,32 @@
                 }
             } catch(e) {}
 
-            if (!audioBufferGlobal) return;
+            if (!audioElementNativo) return;
 
-            if (isPlaying) {
-                // Pausar
-                if (tonePlayer) {
-                    const elapsed = Tone.now() - playbackStartTime + pauseOffset;
-                    pauseOffset = elapsed >= audioBufferGlobal.duration ? 0 : elapsed;
-                    tonePlayer.stop();
-                }
+            if (!audioElementNativo.paused) {
+                audioElementNativo.pause();
                 if (progressInterval) clearInterval(progressInterval);
-                isPlaying = false;
                 atualizarBotoesPlayMaster("▶ Play");
             } else {
-                // Tocar / Retomar
-                if (pauseOffset >= audioBufferGlobal.duration) pauseOffset = 0;
-
-                tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
-                tonePlayer = new Tone.Player(audioBufferGlobal).connect(tonePitchShift);
-                
-                tonePlayer.start(0, pauseOffset);
-                playbackStartTime = Tone.now();
-                isPlaying = true;
+                audioElementNativo.play();
                 atualizarBotoesPlayMaster("⏸ Pausar");
-
-                iniciarMonitoramentoProgressoTone();
+                iniciarMonitoramentoProgressoNativo();
             }
         }
 
         function restartMedia() {
-            if (!audioBufferGlobal) return;
-            if (tonePlayer) tonePlayer.stop();
-            if (progressInterval) clearInterval(progressInterval);
-            
-            pauseOffset = 0;
-            tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
-            tonePlayer = new Tone.Player(audioBufferGlobal).connect(tonePitchShift);
-            
-            tonePlayer.start(0, 0);
-            playbackStartTime = Tone.now();
-            isPlaying = true;
+            if (!audioElementNativo) return;
+            audioElementNativo.currentTime = 0;
+            audioElementNativo.play();
             atualizarBotoesPlayMaster("⏸ Pausar");
-            iniciarMonitoramentoProgressoTone();
+            iniciarMonitoramentoProgressoNativo();
         }
 
         function seekingAudio(valPorcentagem) {
-            if (!audioBufferGlobal) return;
-            const duracaoTotal = audioBufferGlobal.duration;
+            if (!audioElementNativo || !audioElementNativo.duration) return;
+            const duracaoTotal = audioElementNativo.duration;
             const novoTempo = (valPorcentagem / 100) * duracaoTotal;
-            
-            pauseOffset = novoTempo;
-            if (isPlaying) {
-                if (tonePlayer) tonePlayer.stop();
-                tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
-                tonePlayer = new Tone.Player(audioBufferGlobal).connect(tonePitchShift);
-                tonePlayer.start(0, pauseOffset);
-                playbackStartTime = Tone.now();
-            }
+            audioElementNativo.currentTime = novoTempo;
             const timeCurrent = document.getElementById('time-current');
             if (timeCurrent) timeCurrent.innerText = formatarTempo(novoTempo);
         }
@@ -768,7 +736,6 @@
 
             if (yt) { yt.src = ""; yt.style.display = 'none'; }
             pararTonePlayer();
-            audioBufferGlobal = null;
             currentSemitones = 0;
             atualizarDisplayPitch();
             
@@ -790,49 +757,56 @@
                 let url = normalizarUrlMidia(media);
 
                 try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error("Falha no download");
-                    const arrayBuffer = await response.arrayBuffer();
-                    
-                    audioBufferGlobal = await Tone.context.decodeAudioData(arrayBuffer);
+                    audioElementNativo = new Audio();
+                    audioElementNativo.crossOrigin = "anonymous";
+                    audioElementNativo.src = url;
 
-                    const timeTotal = document.getElementById('time-total');
-                    const timeCurrent = document.getElementById('time-current');
-                    const seekBar = document.getElementById('seek-bar');
-                    
-                    if (timeTotal) timeTotal.innerText = formatarTempo(audioBufferGlobal.duration);
-                    if (timeCurrent) timeCurrent.innerText = "00:00";
-                    if (seekBar) seekBar.value = 0;
+                    audioElementNativo.onloadedmetadata = () => {
+                        const timeTotal = document.getElementById('time-total');
+                        const timeCurrent = document.getElementById('time-current');
+                        const seekBar = document.getElementById('seek-bar');
+                        
+                        if (timeTotal) timeTotal.innerText = formatarTempo(audioElementNativo.duration);
+                        if (timeCurrent) timeCurrent.innerText = "00:00";
+                        if (seekBar) seekBar.value = 0;
 
-                    if (nowPlaying) nowPlaying.innerHTML = `Pronto: <b>${musica}</b><br><small>${cantor} (Clique em Play)</small>`;
-                    atualizarBotoesPlayMaster("▶ Play");
+                        tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
+                        tonePlayer = Tone.context.createMediaElementSource(audioElementNativo);
+                        Tone.connect(tonePlayer, tonePitchShift);
+
+                        if (nowPlaying) nowPlaying.innerHTML = `Pronto: <b>${musica}</b><br><small>${cantor} (Clique em Play)</small>`;
+                        atualizarBotoesPlayMaster("▶ Play");
+                    };
+
+                    audioElementNativo.onerror = (e) => {
+                        console.error("Erro no elemento nativo:", e);
+                        alert("Erro ao carregar o ficheiro de áudio. Verifique o link.");
+                    };
+
+                    audioElementNativo.load();
 
                 } catch (err) {
                     console.error("Erro:", err);
-                    alert("Erro ao descarregar ou descodificar o áudio.");
+                    alert("Erro ao iniciar o motor de áudio.");
                 }
             }
         }
 
-        function iniciarMonitoramentoProgressoTone() {
+        function iniciarMonitoramentoProgressoNativo() {
             if (progressInterval) clearInterval(progressInterval);
-            
             progressInterval = setInterval(() => {
-                if (isPlaying && audioBufferGlobal) {
-                    const duracaoTotal = audioBufferGlobal.duration;
-                    let tempoAtual = Tone.now() - playbackStartTime + pauseOffset;
-                    if (tempoAtual > duracaoTotal) tempoAtual = duracaoTotal;
+                if (audioElementNativo && !audioElementNativo.paused) {
+                    const duracaoTotal = audioElementNativo.duration || 0;
+                    const tempoAtual = audioElementNativo.currentTime || 0;
                     
                     const seekBar = document.getElementById('seek-bar');
                     const timeCurrent = document.getElementById('time-current');
                     
-                    if (seekBar) seekBar.value = (tempoAtual / duracaoTotal) * 100;
+                    if (seekBar && duracaoTotal > 0) seekBar.value = (tempoAtual / duracaoTotal) * 100;
                     if (timeCurrent) timeCurrent.innerText = formatarTempo(tempoAtual);
 
                     if (tempoAtual >= duracaoTotal) {
                         clearInterval(progressInterval);
-                        isPlaying = false;
-                        pauseOffset = 0;
                         atualizarBotoesPlayMaster("▶ Play");
                     }
                 }
