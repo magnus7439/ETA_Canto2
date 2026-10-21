@@ -46,10 +46,19 @@
             box-sizing: border-box;
         }
         .player-minimized { resize: none; min-height: 45px; padding-bottom: 10px; }        
-        .player-minimized #yt-player, .player-minimized .pitch-control-box, .player-minimized .progress-container { display: none !important; }        
+        .player-minimized #yt-player, .player-minimized .pitch-control-box, .player-minimized .progress-container, .player-minimized .master-controls-row { display: none !important; }        
         
         #now-playing { font-weight: bold; margin-bottom: 8px; font-size: 1em; padding-right: 40px; }
         
+        .master-controls-row {
+            display: flex; gap: 10px; margin-top: 10px; justify-content: center; align-items: center;
+        }
+        .btn-master-action {
+            background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff; border-radius: 8px; padding: 8px 15px; font-weight: bold; cursor: pointer; font-size: 0.9em;
+        }
+        .btn-master-action:active { background: rgba(255, 255, 255, 0.3); }
+
         .progress-container {
             display: flex; flex-direction: column; gap: 4px; margin-top: 10px; width: 100%;
         }
@@ -179,6 +188,12 @@
         <button class="toggle-player" id="btn-toggle" onclick="togglePlayer()">▼</button>
         <div id="now-playing">Selecione uma faixa</div>
         
+        <div class="master-controls-row">
+            <button class="btn-master-action" onclick="restartMedia()">↺ Início</button>
+            <button class="btn-master-action" id="btn-main-play" onclick="togglePlayPauseMaster()">▶ Play</button>
+            <button class="btn-master-action" onclick="stopAll()" style="color: #ff6b6b;">■ Stop</button>
+        </div>
+
         <div id="progress-panel" class="progress-container">
             <input type="range" id="seek-bar" class="seek-slider" min="0" max="100" value="0" oninput="seekingAudio(this.value)">
             <div class="time-display">
@@ -224,7 +239,7 @@
 
     <div id="float-ctrl" class="floating-controls">
         <button class="btn-large btn-restart" onclick="restartMedia()">↺ Início</button>
-        <button id="btn-pause-float" class="btn-large btn-pause" onclick="pauseMedia()">⏸ Pausar</button>
+        <button id="btn-pause-float" class="btn-large btn-pause" onclick="togglePlayPauseMaster()">⏸ Pausar</button>
         <button class="btn-large btn-stop" onclick="stopAll()">■ Stop</button>
     </div>
 
@@ -242,14 +257,18 @@
         const urlParams = new URLSearchParams(window.location.search);
         let GID_ATUAL = urlParams.get('gid') || '1960210650';
         
-        const CACHE_NAME = 'canto-eta-media-v3';
+        const CACHE_NAME = 'canto-eta-media-v4';
         let modoGerenciamentoAtivo = false;
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
 
+        let audioBufferGlobal = null;
         let tonePlayer = null;
         let tonePitchShift = null;
         let progressInterval = null;
+        let isPlaying = false;
+        let pauseOffset = 0;
+        let playbackStartTime = 0;
 
         const NOTAS_CROMATICAS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const NOTAS_FLAT_MAP = { "Db":"C#", "Eb":"D#", "Gb":"F#", "Ab":"G#", "Bb":"A#" };
@@ -378,51 +397,113 @@
                 clearInterval(progressInterval);
                 progressInterval = null;
             }
+            isPlaying = false;
+            pauseOffset = 0;
         }
 
         function stopAll() {
             const yt = document.getElementById('yt-player');
-            document.getElementById('float-ctrl').style.display = 'none';
-            document.getElementById('pitch-control-panel').style.display = 'flex';
-            document.getElementById('progress-panel').style.display = 'flex';
-            yt.src = ""; yt.style.display = 'none';
+            const floatCtrl = document.getElementById('float-ctrl');
+            if (floatCtrl) floatCtrl.style.display = 'none';
+            
+            const pitchPanel = document.getElementById('pitch-control-panel');
+            const progressPanel = document.getElementById('progress-panel');
+            if (pitchPanel) pitchPanel.style.display = 'flex';
+            if (progressPanel) progressPanel.style.display = 'flex';
+
+            if (yt) { yt.src = ""; yt.style.display = 'none'; }
             pararTonePlayer();
+            audioBufferGlobal = null;
             currentSemitones = 0;
             tomOriginalExtraido = null;
             atualizarDisplayPitch();
-            document.getElementById('main-player-container').classList.add('player-minimized');
-            document.getElementById('btn-toggle').innerText = '▼';
-            document.getElementById('now-playing').innerText = "Selecione uma faixa";
+            
+            const mainContainer = document.getElementById('main-player-container');
+            if (mainContainer) mainContainer.classList.add('player-minimized');
+            
+            const btnToggle = document.getElementById('btn-toggle');
+            if (btnToggle) btnToggle.innerText = '▼';
+            
+            const nowPlaying = document.getElementById('now-playing');
+            if (nowPlaying) nowPlaying.innerText = "Selecione uma faixa";
+            
+            atualizarBotoesPlayMaster("▶ Play");
         }
 
-        function pauseMedia() {
-            const btn = document.getElementById('btn-pause-float');
-            if (Tone.context.state === "running") {
-                Tone.context.suspend();
-                btn.innerText = "▶ Play";
+        function atualizarBotoesPlayMaster(texto) {
+            const btnMain = document.getElementById('btn-main-play');
+            const btnFloat = document.getElementById('btn-pause-float');
+            if (btnMain) btnMain.innerText = texto;
+            if (btnFloat) btnFloat.innerText = texto === "⏸ Pausar" ? "⏸ Pausar" : "▶ Play";
+        }
+
+        async function togglePlayPauseMaster() {
+            try {
+                await Tone.start();
+                if (Tone.context.state !== 'running') {
+                    await Tone.context.resume();
+                }
+            } catch(e) {}
+
+            if (!audioBufferGlobal) return;
+
+            if (isPlaying) {
+                // Pausar
+                if (tonePlayer) {
+                    const elapsed = Tone.now() - playbackStartTime + pauseOffset;
+                    pauseOffset = elapsed >= audioBufferGlobal.duration ? 0 : elapsed;
+                    tonePlayer.stop();
+                }
+                if (progressInterval) clearInterval(progressInterval);
+                isPlaying = false;
+                atualizarBotoesPlayMaster("▶ Play");
             } else {
-                Tone.context.resume();
-                btn.innerText = "⏸ Pausar";
+                // Tocar / Retomar
+                if (pauseOffset >= audioBufferGlobal.duration) pauseOffset = 0;
+
+                tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
+                tonePlayer = new Tone.Player(audioBufferGlobal).connect(tonePitchShift);
+                
+                tonePlayer.start(0, pauseOffset);
+                playbackStartTime = Tone.now();
+                isPlaying = true;
+                atualizarBotoesPlayMaster("⏸ Pausar");
+
+                iniciarMonitoramentoProgressoTone();
             }
         }
 
         function restartMedia() {
-            if (tonePlayer && tonePlayer.loaded) {
-                tonePlayer.stop();
-                tonePlayer.start(0, 0);
-                document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
-            }
+            if (!audioBufferGlobal) return;
+            if (tonePlayer) tonePlayer.stop();
+            if (progressInterval) clearInterval(progressInterval);
+            
+            pauseOffset = 0;
+            tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
+            tonePlayer = new Tone.Player(audioBufferGlobal).connect(tonePitchShift);
+            
+            tonePlayer.start(0, 0);
+            playbackStartTime = Tone.now();
+            isPlaying = true;
+            atualizarBotoesPlayMaster("⏸ Pausar");
+            iniciarMonitoramentoProgressoTone();
         }
 
         function seekingAudio(valPorcentagem) {
-            if (tonePlayer && tonePlayer.loaded) {
-                const duracaoTotal = tonePlayer.buffer.duration;
-                const novoTempo = (valPorcentagem / 100) * duracaoTotal;
-                const estavaTocando = (Tone.context.state === "running");
-                tonePlayer.stop();
-                tonePlayer.start(0, novoTempo);
-                if (!estavaTocando) Tone.context.suspend();
+            if (!audioBufferGlobal) return;
+            const duracaoTotal = audioBufferGlobal.duration;
+            const novoTempo = (valPorcentagem / 100) * duracaoTotal;
+            
+            pauseOffset = novoTempo;
+            if (isPlaying) {
+                if (tonePlayer) tonePlayer.stop();
+                tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
+                tonePlayer = new Tone.Player(audioBufferGlobal).connect(tonePitchShift);
+                tonePlayer.start(0, pauseOffset);
+                playbackStartTime = Tone.now();
             }
+            const timeCurrent = document.getElementById('time-current');
+            if (timeCurrent) timeCurrent.innerText = formatarTempo(novoTempo);
         }
 
         function alterarPitch(delta) {
@@ -449,20 +530,27 @@
         function togglePlayer() {
             const container = document.getElementById('main-player-container');
             const isMin = container.classList.toggle('player-minimized');
-            document.getElementById('btn-toggle').innerText = isMin ? '▼' : '✕';
+            const btnToggle = document.getElementById('btn-toggle');
+            if (btnToggle) btnToggle.innerText = isMin ? '▼' : '✕';
         }
 
         function filtrarLista() {
             const input = document.getElementById('search-input');
             const termo = input.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-            document.getElementById('btn-clear').style.display = input.value ? "block" : "none";
+            const btnClear = document.getElementById('btn-clear');
+            if (btnClear) btnClear.style.display = input.value ? "block" : "none";
+            
             document.querySelectorAll('#playlist-sortable li').forEach(li => {
                 const txt = li.innerText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
                 li.style.display = txt.includes(termo) ? (li.classList.contains('is-separator') && termo !== "" ? "none" : "flex") : "none";
             });
         }
 
-        function limparBusca() { document.getElementById('search-input').value = ''; filtrarLista(); }
+        function limparBusca() { 
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) searchInput.value = ''; 
+            filtrarLista(); 
+        }
 
         function alternarModoGerenciamento() {
             modoGerenciamentoAtivo = !modoGerenciamentoAtivo;
@@ -470,10 +558,10 @@
             const btnModo = document.getElementById('btn-modo-gerenciar');
             if (modoGerenciamentoAtivo) {
                 body.classList.add('modo-gerenciamento');
-                btnModo.innerText = "✖ Sair do Modo Apagar";
+                if (btnModo) btnModo.innerText = "✖ Sair do Modo Apagar";
             } else {
                 body.classList.remove('modo-gerenciamento');
-                btnModo.innerText = "⚙️ Modo Apagar Itens";
+                if (btnModo) btnModo.innerText = "⚙️ Modo Apagar Itens";
             }
         }
 
@@ -568,7 +656,7 @@
 
         function carregar() {
             const lista = document.getElementById('playlist-sortable');
-            lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
+            if (lista) lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
             const xhr = new XMLHttpRequest();
             xhr.open("GET", `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`, true);
             xhr.onreadystatechange = function() {
@@ -581,6 +669,7 @@
 
         function renderizar(texto) {
             const lista = document.getElementById('playlist-sortable');
+            if (!lista) return;
             const linhas = texto.split('\n').map(l => l.trim()).filter(l => l);
             let dadosMap = {};
             linhas.slice(1).forEach((linha, index) => {
@@ -653,7 +742,7 @@
             atualizarStatusBotoesCache();
         }
 
-async function tocar(tipo, media, cantor, musica, elementoLi) {
+        async function tocar(tipo, media, cantor, musica, elementoLi) {
             try {
                 await Tone.start();
             } catch(e) {}
@@ -663,31 +752,23 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
             const progressPanel = document.getElementById('progress-panel');
             
             const playerContainer = document.getElementById('main-player-container');
-            if (playerContainer) {
-                playerContainer.classList.remove('player-minimized');
-            }
+            if (playerContainer) playerContainer.classList.remove('player-minimized');
             
             const btnToggle = document.getElementById('btn-toggle');
             if (btnToggle) btnToggle.innerText = '✕';
             
             const nowPlaying = document.getElementById('now-playing');
-            if (nowPlaying) nowPlaying.innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
+            if (nowPlaying) nowPlaying.innerHTML = `Carregando: <b>${musica}</b><br><small>${cantor}</small>`;
             
             const floatCtrl = document.getElementById('float-ctrl');
             if (floatCtrl) floatCtrl.style.display = 'flex';
             
-            const btnPauseFloat = document.getElementById('btn-pause-float');
-            if (btnPauseFloat) btnPauseFloat.innerText = "⏸ Pausar";
-            
             const notasItem = elementoLi?.querySelector('.notes-field')?.innerText || "";
             tomOriginalExtraido = extrairTomDaString(notasItem) || extrairTomDaString(musica) || extrairTomDaString(cantor);
 
-            if (yt) {
-                yt.src = ""; 
-                yt.style.display = 'none';
-            }
-            
+            if (yt) { yt.src = ""; yt.style.display = 'none'; }
             pararTonePlayer();
+            audioBufferGlobal = null;
             currentSemitones = 0;
             atualizarDisplayPitch();
             
@@ -701,29 +782,63 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
                     let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
                     yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
                 }
-                if (btnPauseFloat) btnPauseFloat.style.display = 'none';
+                if (nowPlaying) nowPlaying.innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
             } else {
                 if (pitchPanel) pitchPanel.style.display = 'flex';
                 if (progressPanel) progressPanel.style.display = 'flex';
-                if (btnPauseFloat) btnPauseFloat.style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
 
-                tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
-                
-                tonePlayer = new Tone.Player({
-                    url: url,
-                    autostart: true,
-                    onload: () => {
-                        const timeTotal = document.getElementById('time-total');
-                        if (timeTotal && tonePlayer.buffer) {
-                            timeTotal.innerText = formatarTempo(tonePlayer.buffer.duration);
-                        }
-                        iniciarMonitoramentoProgressoTone();
-                    }
-                }).connect(tonePitchShift);
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error("Falha no download");
+                    const arrayBuffer = await response.arrayBuffer();
+                    
+                    audioBufferGlobal = await Tone.context.decodeAudioData(arrayBuffer);
+
+                    const timeTotal = document.getElementById('time-total');
+                    const timeCurrent = document.getElementById('time-current');
+                    const seekBar = document.getElementById('seek-bar');
+                    
+                    if (timeTotal) timeTotal.innerText = formatarTempo(audioBufferGlobal.duration);
+                    if (timeCurrent) timeCurrent.innerText = "00:00";
+                    if (seekBar) seekBar.value = 0;
+
+                    if (nowPlaying) nowPlaying.innerHTML = `Pronto: <b>${musica}</b><br><small>${cantor} (Clique em Play)</small>`;
+                    atualizarBotoesPlayMaster("▶ Play");
+
+                } catch (err) {
+                    console.error("Erro:", err);
+                    alert("Erro ao descarregar ou descodificar o áudio.");
+                }
             }
         }
+
+        function iniciarMonitoramentoProgressoTone() {
+            if (progressInterval) clearInterval(progressInterval);
+            
+            progressInterval = setInterval(() => {
+                if (isPlaying && audioBufferGlobal) {
+                    const duracaoTotal = audioBufferGlobal.duration;
+                    let tempoAtual = Tone.now() - playbackStartTime + pauseOffset;
+                    if (tempoAtual > duracaoTotal) tempoAtual = duracaoTotal;
+                    
+                    const seekBar = document.getElementById('seek-bar');
+                    const timeCurrent = document.getElementById('time-current');
+                    
+                    if (seekBar) seekBar.value = (tempoAtual / duracaoTotal) * 100;
+                    if (timeCurrent) timeCurrent.innerText = formatarTempo(tempoAtual);
+
+                    if (tempoAtual >= duracaoTotal) {
+                        clearInterval(progressInterval);
+                        isPlaying = false;
+                        pauseOffset = 0;
+                        atualizarBotoesPlayMaster("▶ Play");
+                    }
+                }
+            }, 200);
+        }
+
         window.addEventListener('DOMContentLoaded', carregar);
     </script>
 </body>
