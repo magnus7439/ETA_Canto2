@@ -6,8 +6,7 @@
     <title>Canto ETA - Roberto.</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <!-- Tone.js para Pitch Shift independente da velocidade -->
-    <script src="Tone.js"></script>
+    <script src="tone.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -47,46 +46,24 @@
             box-sizing: border-box;
         }
         .player-minimized { resize: none; min-height: 45px; padding-bottom: 10px; }        
-        .player-minimized #yt-player, .player-minimized audio, 
-        .player-minimized .pitch-control-box, .player-minimized .progress-container { display: none !important; }        
+        .player-minimized #yt-player, .player-minimized .pitch-control-box, .player-minimized .progress-container { display: none !important; }        
         
         #now-playing { font-weight: bold; margin-bottom: 8px; font-size: 1em; padding-right: 40px; }
-        audio { width: 100%; border-radius: 30px; margin-top: 10px; display: none; }
         
         .progress-container {
-            display: none;
-            flex-direction: column;
-            gap: 4px;
-            margin-top: 10px;
-            width: 100%;
+            display: flex; flex-direction: column; gap: 4px; margin-top: 10px; width: 100%;
         }
         .seek-slider {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            accent-color: #00bcd4;
-            cursor: pointer;
+            width: 100%; height: 6px; border-radius: 3px; accent-color: #00bcd4; cursor: pointer;
         }
         .time-display {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8em;
-            color: #ccc;
-            font-family: monospace;
-            padding: 0 2px;
+            display: flex; justify-content: space-between; font-size: 0.8em; color: #ccc; font-family: monospace; padding: 0 2px;
         }
 
         .pitch-control-box {
-            display: none;
-            margin-top: 10px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
-            padding: 8px 12px;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            flex-wrap: wrap;
+            display: flex; margin-top: 10px; background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px;
+            padding: 8px 12px; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
         }
         .pitch-label { font-size: 0.85em; color: #ff4; font-weight: bold; white-space: nowrap; }
         .pitch-buttons-group { display: flex; gap: 5px; align-items: center; }
@@ -98,8 +75,7 @@
         #pitch-val-display { font-family: monospace; font-size: 0.9em; font-weight: bold; color: #00bcd4; min-width: 35px; text-align: center; }
 
         #yt-player { 
-            display: none; width: 100%; aspect-ratio: 16/9; 
-            border-radius: 10px; border: none; margin-top: 15px; 
+            display: none; width: 100%; aspect-ratio: 16/9; border-radius: 10px; border: none; margin-top: 15px; 
         }
 
         .toggle-player {
@@ -110,8 +86,7 @@
         }
         .floating-controls {
             position: fixed; bottom: 20px; left: 50%;
-            transform: translateX(-50%); display: none; 
-            gap: 10px; z-index: 1000; width: 90%; max-width: 500px;
+            transform: translateX(-50%); display: none; gap: 10px; z-index: 1000; width: 90%; max-width: 500px;
         }
         .btn-large {
             flex: 1; padding: 15px 5px; border-radius: 12px; font-weight: bold;
@@ -123,8 +98,7 @@
         .btn-restart { background: rgba(200, 160, 20, 0.8); color: #000; }
 
         .list-selector-container { 
-            width: 95%; max-width: 600px; margin-bottom: 10px; 
-            display: flex; flex-direction: column; gap: 8px; 
+            width: 95%; max-width: 600px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; 
         }
         #sheet-selector {
             width: 100%; padding: 12px; border-radius: 25px; background: rgba(100, 50, 150, 0.6);
@@ -137,18 +111,14 @@
             font-weight: bold; text-transform: uppercase; outline: none;
         }
         .btn-cache-action {
-            flex: 1; border: 1px solid rgba(255,255,255,0.3);
-            color: #ff4; border-radius: 25px; padding: 10px; cursor: pointer; font-size: 0.85em;
-            font-weight: bold; text-align: center; text-transform: uppercase;
-            box-sizing: border-box; outline: none;
+            flex: 1; border: 1px solid rgba(255,255,255,0.3); color: #ff4; border-radius: 25px;
+            padding: 10px; cursor: pointer; font-size: 0.85em; font-weight: bold; text-align: center; text-transform: uppercase;
         }
         .btn-gerenciar-toggle { background: rgba(180, 80, 20, 0.6); color: #fff; }
         body.modo-gerenciamento .btn-gerenciar-toggle {
             background: rgba(220, 40, 40, 0.9); animation: pulsar 1.5s infinite;
         }
-        @keyframes pulsar {
-            0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; }
-        }
+        @keyframes pulsar { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
         .search-container { width: 95%; max-width: 480px; margin-bottom: 20px; position: relative; }
         #search-input {
@@ -227,7 +197,6 @@
             </div>
         </div>
 
-        <audio id="audio-player"></audio>
         <iframe id="yt-player" allow="autoplay"></iframe>
     </div>
 
@@ -273,12 +242,11 @@
         const urlParams = new URLSearchParams(window.location.search);
         let GID_ATUAL = urlParams.get('gid') || '1960210650';
         
-        const CACHE_NAME = 'canto-eta-media-v1';
+        const CACHE_NAME = 'canto-eta-media-v2';
         let modoGerenciamentoAtivo = false;
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
 
-        // Variáveis do Tone.js
         let tonePlayer = null;
         let tonePitchShift = null;
         let progressInterval = null;
@@ -287,23 +255,13 @@
         const NOTAS_FLAT_MAP = { "Db":"C#", "Eb":"D#", "Gb":"F#", "Ab":"G#", "Bb":"A#" };
         
         const MAPA_EXTENSO = {
-            'do': 'C', 'dó': 'C',
-            're': 'D', 'ré': 'D',
-            'mi': 'E',
-            'fa': 'F', 'fá': 'F',
-            'sol': 'G',
-            'la': 'A', 'lá': 'A',
-            'si': 'B'
+            'do': 'C', 'dó': 'C', 're': 'D', 'ré': 'D', 'mi': 'E',
+            'fa': 'F', 'fá': 'F', 'sol': 'G', 'la': 'A', 'lá': 'A', 'si': 'B'
         };
 
         const MAPA_NOMES_DIAS = {
-            '1960210650': 'DOMINGO',
-            '1517164028': 'SEGUNDA',
-            '216102701':  'TERÇA',
-            '911593347':  'QUARTA',
-            '1593190716': 'QUINTA',
-            '1611821250': 'SEXTA',
-            '1644722704': 'SABADO'
+            '1960210650': 'DOMINGO', '1517164028': 'SEGUNDA', '216102701': 'TERÇA',
+            '911593347': 'QUARTA', '1593190716': 'QUINTA', '1611821250': 'SEXTA', '1644722704': 'SABADO'
         };
 
         window.addEventListener('load', () => {
@@ -311,16 +269,10 @@
             if (seletor) seletor.value = GID_ATUAL;
         });
 
-        function getNomeDiaAtual() {
-            return MAPA_NOMES_DIAS[GID_ATUAL] || "DOMINGO";
-        }
+        function getNomeDiaAtual() { return MAPA_NOMES_DIAS[GID_ATUAL] || "DOMINGO"; }
 
-        function safeGetLocal(key) {
-            try { return localStorage.getItem(key); } catch(e) { return null; }
-        }
-        function safeSetLocal(key, value) {
-            try { localStorage.setItem(key, value); } catch(e) {}
-        }
+        function safeGetLocal(key) { try { return localStorage.getItem(key); } catch(e) { return null; } }
+        function safeSetLocal(key, value) { try { localStorage.setItem(key, value); } catch(e) {} }
 
         function salvarEstadoLocal() {
             const itens = [];
@@ -352,7 +304,6 @@
         function extrairTomDaString(texto) {
             if (!texto) return null;
             let textoLower = texto.toLowerCase();
-
             for (let nomeExtenso in MAPA_EXTENSO) {
                 let regexExtenso = new RegExp(`\\b${nomeExtenso}\\s*(menor|m)?\\b`, 'i');
                 if (regexExtenso.test(textoLower)) {
@@ -362,7 +313,6 @@
                     return notaCifra + ehMenor;
                 }
             }
-
             const regexCifra = /\b([A-G][#b]?m?)\b/;
             const matchCifra = texto.match(regexCifra);
             if (matchCifra) {
@@ -370,10 +320,8 @@
                 let notaBase = nota.charAt(0).toUpperCase();
                 let acidente = (nota.length > 1 && (nota[1] === '#' || nota[1] === 'b')) ? nota[1] : '';
                 let menor = nota.toLowerCase().endsWith('m') ? 'm' : '';
-                
                 let notaFull = notaBase + acidente;
                 if (NOTAS_FLAT_MAP[notaFull]) notaFull = NOTAS_FLAT_MAP[notaFull];
-                
                 return notaFull + menor;
             }
             return null;
@@ -383,31 +331,22 @@
             if (!notaComTipo) return "--";
             let menor = notaComTipo.endsWith('m') ? 'm' : '';
             let notaApenas = menor ? notaComTipo.slice(0, -1) : notaComTipo;
-            
             let idx = NOTAS_CROMATICAS.indexOf(notaApenas);
             if (idx === -1) return notaComTipo;
-
             let novoIdx = (idx + semitones) % 12;
             if (novoIdx < 0) novoIdx += 12;
-
             return NOTAS_CROMATICAS[novoIdx] + menor;
         }
 
         function atualizarDisplayPitch() {
             const valDisplay = document.getElementById('pitch-val-display');
             const keyLabel = document.getElementById('pitch-key-label');
-
             const txtSemitons = (currentSemitones > 0 ? `+${currentSemitones}` : currentSemitones) + " st";
             if (valDisplay) valDisplay.innerText = txtSemitons;
-
             if (keyLabel) {
                 if (tomOriginalExtraido) {
                     const tomTransposto = transporNota(tomOriginalExtraido, currentSemitones);
-                    if (currentSemitones === 0) {
-                        keyLabel.innerText = `🎵 Tom: ${tomTransposto}`;
-                    } else {
-                        keyLabel.innerText = `🎵 Tom: ${tomTransposto} (Orig: ${tomOriginalExtraido}, ${txtSemitons})`;
-                    }
+                    keyLabel.innerText = currentSemitones === 0 ? `🎵 Tom: ${tomTransposto}` : `🎵 Tom: ${tomTransposto} (Orig: ${tomOriginalExtraido}, ${txtSemitons})`;
                 } else {
                     keyLabel.innerText = `🎵 Tom: ${txtSemitons}`;
                 }
@@ -422,6 +361,9 @@
             } else if (url.includes('drive.google.com') && url.includes('/d/')) {
                 const id = url.split('/d/')[1].split('/')[0];
                 return `https://docs.google.com/uc?export=download&id=${id}`;
+            } else if (!url.includes('http://') && !url.includes('https://')) {
+                // Se for apenas o nome do arquivo (ex: som.mp3), aponta para a raiz do GitHub Pages atual
+                return window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1) + url;
             }
             return url;
         }
@@ -444,17 +386,13 @@
         function stopAll() {
             const yt = document.getElementById('yt-player');
             document.getElementById('float-ctrl').style.display = 'none';
-            document.getElementById('pitch-control-panel').style.display = 'none';
-            document.getElementById('progress-panel').style.display = 'none';
-            
-            yt.src = "";
-            yt.style.display = 'none';
+            document.getElementById('pitch-control-panel').style.display = 'flex';
+            document.getElementById('progress-panel').style.display = 'flex';
+            yt.src = ""; yt.style.display = 'none';
             pararTonePlayer();
-            
             currentSemitones = 0;
             tomOriginalExtraido = null;
             atualizarDisplayPitch();
-
             document.getElementById('main-player-container').classList.add('player-minimized');
             document.getElementById('btn-toggle').innerText = '▼';
             document.getElementById('now-playing').innerText = "Selecione uma faixa";
@@ -462,14 +400,12 @@
 
         function pauseMedia() {
             const btn = document.getElementById('btn-pause-float');
-            if (tonePlayer) {
-                if (Tone.context.state === "running") {
-                    Tone.context.suspend();
-                    btn.innerText = "▶ Play";
-                } else {
-                    Tone.context.resume();
-                    btn.innerText = "⏸ Pausar";
-                }
+            if (Tone.context.state === "running") {
+                Tone.context.suspend();
+                btn.innerText = "▶ Play";
+            } else {
+                Tone.context.resume();
+                btn.innerText = "⏸ Pausar";
             }
         }
 
@@ -486,7 +422,6 @@
                 const duracaoTotal = tonePlayer.buffer.duration;
                 const novoTempo = (valPorcentagem / 100) * duracaoTotal;
                 const estavaTocando = (Tone.context.state === "running");
-                
                 tonePlayer.stop();
                 tonePlayer.start(0, novoTempo);
                 if (!estavaTocando) Tone.context.suspend();
@@ -499,7 +434,6 @@
                 currentSemitones = novoValor;
                 atualizarDisplayPitch();
                 if (tonePitchShift) {
-                    // Altera o tom via Tone.js instantaneamente sem alterar a velocidade
                     tonePitchShift.pitch = currentSemitones;
                 }
             }
@@ -509,16 +443,11 @@
             if (currentSemitones !== 0) {
                 currentSemitones = 0;
                 atualizarDisplayPitch();
-                if (tonePitchShift) {
-                    tonePitchShift.pitch = 0;
-                }
+                if (tonePitchShift) tonePitchShift.pitch = 0;
             }
         }
 
-        function mudarLista(novoGid) { 
-            GID_ATUAL = novoGid; 
-            carregar(); 
-        }
+        function mudarLista(novoGid) { GID_ATUAL = novoGid; carregar(); }
 
         function togglePlayer() {
             const container = document.getElementById('main-player-container');
@@ -542,7 +471,6 @@
             modoGerenciamentoAtivo = !modoGerenciamentoAtivo;
             const body = document.body;
             const btnModo = document.getElementById('btn-modo-gerenciar');
-
             if (modoGerenciamentoAtivo) {
                 body.classList.add('modo-gerenciamento');
                 btnModo.innerText = "✖ Sair do Modo Apagar";
@@ -557,28 +485,18 @@
             const part1 = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
             const part2 = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
             const notesField = elementoLi.querySelector('.notes-field')?.innerText.trim() || '';
-
             let infoConcatenada = `${part2} (${part1})`;
-            if (elementoLi.classList.contains('is-study')) {
-                infoConcatenada = `${part1} (${part2})`;
-            }
-            if (notesField !== "") {
-                infoConcatenada += ` - ${notesField}`;
-            }
-
+            if (elementoLi.classList.contains('is-study')) infoConcatenada = `${part1} (${part2})`;
+            if (notesField !== "") infoConcatenada += ` - ${notesField}`;
             if (!confirm(`Deseja realmente apagar este item da planilha de ${diaSemana}?`)) return;
-
             try {
                 elementoLi.style.opacity = "0.3";
                 const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}`;
-
                 await fetch(urlCompleta, { method: 'GET', mode: 'no-cors' });
-                
                 elementoLi.remove();
                 salvarEstadoLocal();
                 alert("Comando de exclusão enviado para a planilha!");
             } catch (error) {
-                console.error("Erro ao excluir da planilha:", error);
                 alert("Houve um erro ao tentar comunicar com a planilha.");
                 elementoLi.style.opacity = "1";
             }
@@ -597,14 +515,12 @@
                     btnElement.innerText = '⏳';
                     const req = new Request(url, { mode: 'cors' });
                     const res = await fetch(req);
-                    if (!res.ok) throw new Error('Falha no download');
+                    if (!res.ok) throw new Error('Falha');
                     await cache.put(req, res);
                     btnElement.innerText = '🗑️';
                     btnElement.classList.add('cached');
                 }
             } catch (error) {
-                console.error('Erro na Cache API:', error);
-                alert('Não foi possível salvar o arquivo.');
                 btnElement.innerText = '⬇️';
             }
         }
@@ -614,8 +530,7 @@
             const cache = await caches.open(CACHE_NAME);
             for (let btn of botoes) {
                 const url = btn.dataset.url;
-                const match = await cache.match(url);
-                if (match) {
+                if (await cache.match(url)) {
                     btn.innerText = '🗑️';
                     btn.classList.add('cached');
                 }
@@ -624,88 +539,52 @@
 
         async function baixarMidiasDoDia() {
             const botoes = document.querySelectorAll('#playlist-sortable .btn-cache:not(.cached)');
-            const diaSemana = getNomeDiaAtual();
-
-            if (botoes.length === 0) {
-                alert(`Todas as mídias de ${diaSemana} já estão baixadas!`);
-                return;
-            }
-
-            if (confirm(`Deseja baixar todas as ${botoes.length} mídias de ${diaSemana}?`)) {
+            if (botoes.length === 0) return alert("Todas as mídias já estão baixadas!");
+            if (confirm(`Deseja baixar todas as ${botoes.length} mídias?`)) {
                 const cache = await caches.open(CACHE_NAME);
                 for (let btn of botoes) {
                     const url = btn.dataset.url;
                     if (!url) continue;
                     btn.innerText = '⏳';
                     try {
-                        const req = new Request(url, { mode: 'cors' });
-                        const res = await fetch(req);
-                        if (res.ok) {
-                            await cache.put(req, res);
-                            btn.innerText = '🗑️';
-                            btn.classList.add('cached');
-                        } else {
-                            btn.innerText = '⬇️';
-                        }
-                    } catch (error) {
-                        btn.innerText = '⬇️';
-                    }
+                        const res = await fetch(new Request(url, { mode: 'cors' }));
+                        if (res.ok) { await cache.put(url, res); btn.innerText = '🗑️'; btn.classList.add('cached'); }
+                        else { btn.innerText = '⬇️'; }
+                    } catch(e) { btn.innerText = '⬇️'; }
                 }
-                alert(`Downloads de ${diaSemana} concluídos!`);
+                alert("Downloads concluídos!");
             }
         }
 
         async function limparMidiasDoDia() {
             const botoes = document.querySelectorAll('#playlist-sortable .btn-cache.cached');
-            const diaSemana = getNomeDiaAtual();
-
-            if (botoes.length === 0) {
-                alert(`Não há nenhuma mídia baixada na lista de ${diaSemana} para apagar.`);
-                return;
-            }
-
-            if (confirm(`Tem certeza que deseja apagar as ${botoes.length} músicas baixadas de ${diaSemana}?`)) {
+            if (botoes.length === 0) return alert("Não há mídias baixadas.");
+            if (confirm("Deseja apagar as mídias da memória?")) {
                 const cache = await caches.open(CACHE_NAME);
-                let apagadosContador = 0;
                 for (let btn of botoes) {
-                    const url = btn.dataset.url;
-                    if (!url) continue;
-                    const deletado = await cache.delete(url);
-                    if (deletado) {
-                        btn.innerText = '⬇️';
-                        btn.classList.remove('cached');
-                        apagadosContador++;
-                    }
+                    await cache.delete(btn.dataset.url);
+                    btn.innerText = '⬇️'; btn.classList.remove('cached');
                 }
-                alert(`${apagadosContador} mídias de ${diaSemana} foram removidas da memória!`);
+                alert("Removido com sucesso!");
             }
         }
 
         function carregar() {
             const lista = document.getElementById('playlist-sortable');
             lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
-            
             const xhr = new XMLHttpRequest();
-            const fullUrl = `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`;
-            
-            xhr.open("GET", fullUrl, true);
+            xhr.open("GET", `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`, true);
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) { renderizar(xhr.responseText); }
-                    else { lista.innerHTML = `<p style="text-align:center;">Erro de conexão.</p>`; }
-                }
+                if (xhr.readyState === 4 && xhr.status === 200) renderizar(xhr.responseText);
             };
             xhr.send();
         }
 
-        function inlineSplitCSV(linha) {
-            return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-        }
+        function inlineSplitCSV(linha) { return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); }
 
         function renderizar(texto) {
             const lista = document.getElementById('playlist-sortable');
             const linhas = texto.split('\n').map(l => l.trim()).filter(l => l);
-            
             let dadosMap = {};
             linhas.slice(1).forEach((linha, index) => {
                 const cols = inlineSplitCSV(linha);
@@ -727,9 +606,7 @@
                     const objSalvo = JSON.parse(salva);
                     idsOrdenados = objSalvo.map(s => s.id).filter(id => dadosMap[id]);
                     Object.keys(dadosMap).forEach(id => { if (!idsOrdenados.includes(id)) idsOrdenados.push(id); });
-                    objSalvo.forEach(s => {
-                        estadosCheck[s.id] = { done: s.done, notas: s.notas };
-                    });
+                    objSalvo.forEach(s => { estadosCheck[s.id] = { done: s.done, notas: s.notas }; });
                 } catch(e) {}
             }
 
@@ -752,19 +629,13 @@
                     const ehYouTube = item.media && (item.media.includes('youtube.com') || item.media.includes('youtu.be') || item.media.length === 11);
                     const urlFinal = normalizarUrlMidia(item.media);
 
-                    let displayHTML = '';
-                    if (item.tipo === 'estudo') {
-                        li.classList.add('is-study');
-                        displayHTML = `<span class="interpreter">${item.musica}</span><span class="song-title">${item.cantor}</span>`;
-                    } else {
-                        displayHTML = `<span class="interpreter">${item.cantor}</span><span class="song-title">${item.musica}</span>`;
-                    }
+                    let displayHTML = item.tipo === 'estudo' ? `<span class="interpreter">${item.musica}</span><span class="song-title">${item.cantor}</span>` : `<span class="interpreter">${item.cantor}</span><span class="song-title">${item.musica}</span>`;
 
                     let botoesAcao = `
                         <div class="action-buttons">
                             ${temMidia && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
                             ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media.replace(/'/g, "\\'")}', '${item.cantor.replace(/'/g, "\\'")}', '${item.musica.replace(/'/g, "\\'")}', this.closest('li'))">▶</button>` : ''}
-                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir da Planilha">🗑️</button>
+                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir">🗑️</button>
                         </div>
                     `;
 
@@ -785,15 +656,13 @@
             atualizarStatusBotoesCache();
         }
 
-async function tocar(tipo, media, cantor, musica, elementoLi) {
+        async function tocar(tipo, media, cantor, musica, elementoLi) {
             const yt = document.getElementById('yt-player');
             const pitchPanel = document.getElementById('pitch-control-panel');
             const progressPanel = document.getElementById('progress-panel');
             
-            const playerContainer = document.getElementById('main-player-container');
-            playerContainer.classList.remove('player-minimized');
+            document.getElementById('main-player-container').classList.remove('player-minimized');
             document.getElementById('btn-toggle').innerText = '✕';
-            
             document.getElementById('now-playing').innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
             document.getElementById('float-ctrl').style.display = 'flex';
             document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
@@ -801,8 +670,7 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
             const notasItem = elementoLi?.querySelector('.notes-field')?.innerText || "";
             tomOriginalExtraido = extrairTomDaString(notasItem) || extrairTomDaString(musica) || extrairTomDaString(cantor);
 
-            yt.src = "";
-            yt.style.display = 'none';
+            yt.src = ""; yt.style.display = 'none';
             pararTonePlayer();
             currentSemitones = 0;
             atualizarDisplayPitch();
@@ -823,28 +691,29 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
                 
                 let url = normalizarUrlMidia(media);
 
-                // Garante a inicialização do contexto de áudio exigida pelo Chrome
-                await Tone.start();
-
-                // Cria o efeito de Pitch Shift independente do tempo
-                tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
-                
-                // Carrega o player aguardando o buffer carregar com segurança
-                tonePlayer = new Tone.Player({
-                    url: url,
-                    onload: () => {
-                        tonePlayer.start(0);
-                        document.getElementById('time-total').innerText = formatarTempo(tonePlayer.buffer.duration);
-                        iniciarMonitoramentoProgressoTone();
-                    }
-                }).connect(tonePitchShift);
+                try {
+                    await Tone.start();
+                    tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
+                    
+                    tonePlayer = new Tone.Player({
+                        url: url,
+                        autostart: true,
+                        onload: () => {
+                            document.getElementById('time-total').innerText = formatarTempo(tonePlayer.buffer.duration);
+                            iniciarMonitoramentoProgressoTone();
+                        }
+                    }).connect(tonePitchShift);
+                } catch (err) {
+                    console.error("Erro ao reproduzir com Tone.js:", err);
+                    alert("Erro ao decodificar o áudio. Verifique se o arquivo existe.");
+                }
             }
         }
 
         function iniciarMonitoramentoProgressoTone() {
             if (progressInterval) clearInterval(progressInterval);
             progressInterval = setInterval(() => {
-                if (tonePlayer && tonePlayer.loaded && tonePlayer.state === "started") {
+                if (tonePlayer && tonePlayer.loaded) {
                     const duracaoTotal = tonePlayer.buffer.duration;
                     const tempoAtual = tonePlayer.progress * duracaoTotal;
                     
