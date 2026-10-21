@@ -716,7 +716,7 @@
             atualizarStatusBotoesCache();
         }
 
-        async function tocar(tipo, media, cantor, musica, elementoLi) {
+  async function tocar(tipo, media, cantor, musica, elementoLi) {
             const yt = document.getElementById('yt-player');
             const pitchPanel = document.getElementById('pitch-control-panel');
             const progressPanel = document.getElementById('progress-panel');
@@ -757,10 +757,16 @@
                 if (progressPanel) progressPanel.style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
+                const ehDropbox = url.includes('dropbox.com');
 
                 try {
                     audioElementNativo = new Audio();
-                    audioElementNativo.crossOrigin = "anonymous";
+                    
+                    // Só ativa o crossOrigin se NÃO for Dropbox, para evitar bloqueio de CORS
+                    if (!ehDropbox) {
+                        audioElementNativo.crossOrigin = "anonymous";
+                    }
+
                     audioElementNativo.src = url;
 
                     audioElementNativo.onloadedmetadata = async () => {
@@ -772,16 +778,19 @@
                         if (timeCurrent) timeCurrent.innerText = "00:00";
                         if (seekBar) seekBar.value = 0;
 
-                        try {
-                            await Tone.start();
-                            if (Tone.context.state !== 'running') {
-                                await Tone.context.resume();
+                        // Se não for Dropbox, podemos conectar com segurança ao Tone.js PitchShift
+                        if (!ehDropbox) {
+                            try {
+                                await Tone.start();
+                                if (Tone.context.state !== 'running') {
+                                    await Tone.context.resume();
+                                }
+                                tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
+                                tonePlayerNode = Tone.context.createMediaElementSource(audioElementNativo);
+                                Tone.connect(tonePlayerNode, tonePitchShift);
+                            } catch(err) {
+                                console.error("Erro ao ligar ao Tone.js PitchShift:", err);
                             }
-                            tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
-                            tonePlayerNode = Tone.context.createMediaElementSource(audioElementNativo);
-                            Tone.connect(tonePlayerNode, tonePitchShift);
-                        } catch(err) {
-                            console.error("Erro ao ligar ao Tone.js PitchShift:", err);
                         }
 
                         if (nowPlaying) nowPlaying.innerHTML = `Pronto: <b>${musica}</b><br><small>${cantor} (Clique em Play)</small>`;
@@ -790,7 +799,7 @@
 
                     audioElementNativo.onerror = (e) => {
                         console.error("Erro no carregamento do ficheiro:", e);
-                        alert(`Erro ao carregar o ficheiro de áudio. Verifique se o link está correto e acessível: \n${url}`);
+                        alert(`Erro ao carregar o ficheiro de áudio. Verifique se o link está correto:\n${url}`);
                     };
 
                     audioElementNativo.load();
@@ -801,7 +810,6 @@
                 }
             }
         }
-
         function iniciarMonitoramentoProgressoNativo() {
             if (progressInterval) clearInterval(progressInterval);
             progressInterval = setInterval(() => {
