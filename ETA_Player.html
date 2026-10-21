@@ -577,4 +577,265 @@
                     btnElement.classList.remove('cached');
                 } else {
                     btnElement.innerText = '⏳';
-                    const
+                    const req = new Request(url, { mode: 'cors' });
+                    const res = await fetch(req);
+                    if (!res.ok) throw new Error('Falha');
+                    await cache.put(req, res);
+                    btnElement.innerText = '🗑️';
+                    btnElement.classList.add('cached');
+                }
+            } catch (error) {
+                btnElement.innerText = '⬇️';
+            }
+        }
+
+        async function atualizarStatusBotoesCache() {
+            const botoes = document.querySelectorAll('.btn-cache');
+            const cache = await caches.open(CACHE_NAME);
+            for (let btn of botoes) {
+                const url = btn.dataset.url;
+                if (await cache.match(url)) {
+                    btn.innerText = '🗑️';
+                    btn.classList.add('cached');
+                }
+            }
+        }
+
+        async function baixarMidiasDoDia() {
+            const botoes = document.querySelectorAll('#playlist-sortable .btn-cache:not(.cached)');
+            if (botoes.length === 0) return alert("Todas as mídias já estão baixadas!");
+            if (confirm(`Deseja baixar todas as ${botoes.length} mídias?`)) {
+                const cache = await caches.open(CACHE_NAME);
+                for (let btn of botoes) {
+                    const url = btn.dataset.url;
+                    if (!url) continue;
+                    btn.innerText = '⏳';
+                    try {
+                        const res = await fetch(new Request(url, { mode: 'cors' }));
+                        if (res.ok) { await cache.put(url, res); btn.innerText = '🗑️'; btn.classList.add('cached'); }
+                        else { btn.innerText = '⬇️'; }
+                    } catch(e) { btn.innerText = '⬇️'; }
+                }
+                alert("Downloads concluídos!");
+            }
+        }
+
+        async function limparMidiasDoDia() {
+            const botoes = document.querySelectorAll('#playlist-sortable .btn-cache.cached');
+            if (botoes.length === 0) return alert("Não há mídias baixadas.");
+            if (confirm("Deseja apagar as mídias da memória?")) {
+                const cache = await caches.open(CACHE_NAME);
+                for (let btn of botoes) {
+                    await cache.delete(btn.dataset.url);
+                    btn.innerText = '⬇️'; btn.classList.remove('cached');
+                }
+                alert("Removido com sucesso!");
+            }
+        }
+
+        function carregar() {
+            const lista = document.getElementById('playlist-sortable');
+            if (lista) lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) renderizar(xhr.responseText);
+            };
+            xhr.send();
+        }
+
+        function inlineSplitCSV(linha) { return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); }
+
+        function renderizar(texto) {
+            const lista = document.getElementById('playlist-sortable');
+            if (!lista) return;
+            const linhas = texto.split('\n').map(l => l.trim()).filter(l => l);
+            let dadosMap = {};
+            linhas.slice(1).forEach((linha, index) => {
+                const cols = inlineSplitCSV(linha);
+                const id = cols[0]?.replace(/"/g, '') || ('item-'+index);
+                dadosMap[id] = {
+                    id: id, cantor: cols[1]?.replace(/"/g, '') || '',
+                    musica: cols[2]?.replace(/"/g, '') || '',
+                    media: cols[3]?.replace(/"/g, '').trim() || '',
+                    tipo: (cols[4]?.replace(/"/g, '') || '').toLowerCase().trim(),
+                    notes: cols[5]?.replace(/"/g, '') || ''
+                };
+            });
+
+            const salva = safeGetLocal('ordem_' + GID_ATUAL);
+            let idsOrdenados = Object.keys(dadosMap);
+            let estadosCheck = {};
+            if (salva) {
+                try {
+                    const objSalvo = JSON.parse(salva);
+                    idsOrdenados = objSalvo.map(s => s.id).filter(id => dadosMap[id]);
+                    Object.keys(dadosMap).forEach(id => { if (!idsOrdenados.includes(id)) idsOrdenados.push(id); });
+                    objSalvo.forEach(s => { estadosCheck[s.id] = { done: s.done, notas: s.notas }; });
+                } catch(e) {}
+            }
+
+            lista.innerHTML = '';
+            idsOrdenados.forEach(id => {
+                const item = dadosMap[id];
+                if (!item || !item.musica) return;
+                const li = document.createElement('li');
+                li.className = 'glass-panel';
+                li.dataset.id = item.id;
+                
+                if (item.tipo === 'separador') {
+                    li.classList.add('is-separator');
+                    li.innerHTML = `<div class="separator-content"><div class="drag-handle">⋮⋮</div><div class="separator-title">${item.musica}</div></div>`;
+                } else {
+                    const salvoInfo = estadosCheck[item.id] || { done: false, notas: "" };
+                    if(salvoInfo.done) li.classList.add('done');
+                    const notaFinal = (salvoInfo.notas && salvoInfo.notas.trim() !== "") ? salvoInfo.notas : item.notes;
+                    const temMidia = item.media && item.media.length > 5;
+                    const ehYouTube = item.media && (item.media.includes('youtube.com') || item.media.includes('youtu.be') || item.media.length === 11);
+                    const urlFinal = normalizarUrlMidia(item.media);
+
+                    let displayHTML = item.tipo === 'estudo' ? `<span class="interpreter">${item.musica}</span><span class="song-title">${item.cantor}</span>` : `<span class="interpreter">${item.cantor}</span><span class="song-title">${item.musica}</span>`;
+
+                    let botoesAcao = `
+                        <div class="action-buttons">
+                            ${temMidia && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
+                            ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media.replace(/'/g, "\\'")}', '${item.cantor.replace(/'/g, "\\'")}', '${item.musica.replace(/'/g, "\\'")}', this.closest('li'))">▶</button>` : ''}
+                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir">🗑️</button>
+                        </div>
+                    `;
+
+                    li.innerHTML = `
+                        <div class="li-main-row">
+                            <div class="drag-handle">⋮⋮</div>
+                            <input type="checkbox" class="chk-done" ${salvoInfo.done ? 'checked' : ''} onchange="this.closest('li').classList.toggle('done'); salvarEstadoLocal();">
+                            <div class="song-info">${displayHTML}</div>
+                            ${botoesAcao}
+                        </div>
+                        <div class="notes-field" contenteditable="true" onblur="salvarEstadoLocal()">${notaFinal}</div>
+                    `;
+                }
+                lista.appendChild(li);
+            });
+
+            Sortable.create(lista, { handle: '.drag-handle', animation: 150, delayOnTouchOnly: true, onEnd: salvarEstadoLocal });
+            atualizarStatusBotoesCache();
+        }
+
+        async function tocar(tipo, media, cantor, musica, elementoLi) {
+            const yt = document.getElementById('yt-player');
+            const pitchPanel = document.getElementById('pitch-control-panel');
+            const progressPanel = document.getElementById('progress-panel');
+            
+            const playerContainer = document.getElementById('main-player-container');
+            if (playerContainer) playerContainer.classList.remove('player-minimized');
+            
+            const btnToggle = document.getElementById('btn-toggle');
+            if (btnToggle) btnToggle.innerText = '✕';
+            
+            const nowPlaying = document.getElementById('now-playing');
+            if (nowPlaying) nowPlaying.innerHTML = `Carregando: <b>${musica}</b><br><small>${cantor}</small>`;
+            
+            const floatCtrl = document.getElementById('float-ctrl');
+            if (floatCtrl) floatCtrl.style.display = 'flex';
+            
+            const notasItem = elementoLi?.querySelector('.notes-field')?.innerText || "";
+            tomOriginalExtraido = extrairTomDaString(notasItem) || extrairTomDaString(musica) || extrairTomDaString(cantor);
+
+            if (yt) { yt.src = ""; yt.style.display = 'none'; }
+            pararTonePlayer();
+            currentSemitones = 0;
+            atualizarDisplayPitch();
+            
+            const ehYouTube = media.includes('youtube.com') || media.includes('youtu.be') || (media.length === 11 && !media.includes('http'));
+            
+            if (ehYouTube) {
+                if (pitchPanel) pitchPanel.style.display = 'none';
+                if (progressPanel) progressPanel.style.display = 'none';
+                if (yt) {
+                    yt.style.display = 'block';
+                    let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
+                    yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+                }
+                if (nowPlaying) nowPlaying.innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
+            } else {
+                if (pitchPanel) pitchPanel.style.display = 'flex';
+                if (progressPanel) progressPanel.style.display = 'flex';
+                
+                let url = normalizarUrlMidia(media);
+                const ehDropbox = url.includes('dropbox.com');
+
+                try {
+                    audioElementNativo = new Audio();
+                    
+                    if (!ehDropbox) {
+                        audioElementNativo.crossOrigin = "anonymous";
+                    }
+
+                    audioElementNativo.src = url;
+
+                    audioElementNativo.onloadedmetadata = async () => {
+                        const timeTotal = document.getElementById('time-total');
+                        const timeCurrent = document.getElementById('time-current');
+                        const seekBar = document.getElementById('seek-bar');
+                        
+                        if (timeTotal) timeTotal.innerText = formatarTempo(audioElementNativo.duration);
+                        if (timeCurrent) timeCurrent.innerText = "00:00";
+                        if (seekBar) seekBar.value = 0;
+
+                        if (!ehDropbox) {
+                            try {
+                                await Tone.start();
+                                if (Tone.context.state !== 'running') {
+                                    await Tone.context.resume();
+                                }
+                                tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
+                                tonePlayerNode = Tone.context.createMediaElementSource(audioElementNativo);
+                                Tone.connect(tonePlayerNode, tonePitchShift);
+                            } catch(err) {
+                                console.error("Erro ao ligar ao Tone.js PitchShift:", err);
+                            }
+                        }
+
+                        if (nowPlaying) nowPlaying.innerHTML = `Pronto: <b>${musica}</b><br><small>${cantor} (Clique em Play)</small>`;
+                        atualizarBotoesPlayMaster("▶ Play");
+                    };
+
+                    audioElementNativo.onerror = (e) => {
+                        console.error("Erro no carregamento do ficheiro:", e);
+                        alert(`Erro ao carregar o ficheiro de áudio. Verifique se o link está correto:\n${url}`);
+                    };
+
+                    audioElementNativo.load();
+
+                } catch (err) {
+                    console.error("Erro:", err);
+                    alert("Erro ao iniciar o motor de áudio.");
+                }
+            }
+        }
+
+        function iniciarMonitoramentoProgressoNativo() {
+            if (progressInterval) clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                if (audioElementNativo && !audioElementNativo.paused) {
+                    const duracaoTotal = audioElementNativo.duration || 0;
+                    const tempoAtual = audioElementNativo.currentTime || 0;
+                    
+                    const seekBar = document.getElementById('seek-bar');
+                    const timeCurrent = document.getElementById('time-current');
+                    
+                    if (seekBar && duracaoTotal > 0) seekBar.value = (tempoAtual / duracaoTotal) * 100;
+                    if (timeCurrent) timeCurrent.innerText = formatarTempo(tempoAtual);
+
+                    if (tempoAtual >= duracaoTotal) {
+                        clearInterval(progressInterval);
+                        atualizarBotoesPlayMaster("▶ Play");
+                    }
+                }
+            }, 200);
+        }
+
+        window.addEventListener('DOMContentLoaded', carregar);
+    </script>
+</body>
+</html>
