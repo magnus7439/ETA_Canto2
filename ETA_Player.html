@@ -654,12 +654,7 @@
         }
 
 async function tocar(tipo, media, cantor, musica, elementoLi) {
-            // 1. O Tone.start() DEVE ser a PRIMEIRA coisa executada no clique do utilizador
-            try {
-                await Tone.start();
-            } catch (e) {
-                console.error("Contexto de áudio bloqueado pelo navegador:", e);
-            }
+            await Tone.start();
 
             const yt = document.getElementById('yt-player');
             const pitchPanel = document.getElementById('pitch-control-panel');
@@ -695,29 +690,18 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
                 
                 let url = normalizarUrlMidia(media);
 
-                try {
-                    tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
-                    
-                    tonePlayer = new Tone.Player({
-                        url: url,
-                        autostart: true,
-                        onload: () => {
-                            document.getElementById('time-total').innerText = formatarTempo(tonePlayer.buffer.duration);
-                            iniciarMonitoramentoProgressoTone();
-                        },
-                        onerror: (e) => {
-                            console.error("Erro no player do Tone:", e);
-                            alert("Erro ao carregar o ficheiro de áudio. Verifique se o link está correto.");
-                        }
-                    }).connect(tonePitchShift);
-
-                } catch (err) {
-                    console.error("Erro geral no player:", err);
-                    alert("Erro ao iniciar o motor de áudio.");
-                }
+                tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
+                
+                tonePlayer = new Tone.Player({
+                    url: url,
+                    autostart: true,
+                    onload: () => {
+                        document.getElementById('time-total').innerText = formatarTempo(tonePlayer.buffer.duration);
+                        iniciarMonitoramentoProgressoTone();
+                    }
+                }).connect(tonePitchShift);
             }
         }
-
         function iniciarMonitoramentoProgressoTone() {
             if (progressInterval) clearInterval(progressInterval);
             progressInterval = setInterval(() => {
