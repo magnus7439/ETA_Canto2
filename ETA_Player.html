@@ -653,7 +653,14 @@
             atualizarStatusBotoesCache();
         }
 
-        async function tocar(tipo, media, cantor, musica, elementoLi) {
+async function tocar(tipo, media, cantor, musica, elementoLi) {
+            // 1. O Tone.start() DEVE ser a PRIMEIRA coisa executada no clique do utilizador
+            try {
+                await Tone.start();
+            } catch (e) {
+                console.error("Contexto de áudio bloqueado pelo navegador:", e);
+            }
+
             const yt = document.getElementById('yt-player');
             const pitchPanel = document.getElementById('pitch-control-panel');
             const progressPanel = document.getElementById('progress-panel');
@@ -689,9 +696,6 @@
                 let url = normalizarUrlMidia(media);
 
                 try {
-                    await Tone.start();
-
-                    // Carregamento direto via Tone.Player com tratamento de fallback nativo se houver falha de decodificação
                     tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
                     
                     tonePlayer = new Tone.Player({
@@ -703,7 +707,7 @@
                         },
                         onerror: (e) => {
                             console.error("Erro no player do Tone:", e);
-                            alert("Erro ao reproduzir arquivo. Certifique-se de que a URL é um link direto válido.");
+                            alert("Erro ao carregar o ficheiro de áudio. Verifique se o link está correto.");
                         }
                     }).connect(tonePitchShift);
 
