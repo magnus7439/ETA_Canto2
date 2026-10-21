@@ -710,7 +710,7 @@
             atualizarStatusBotoesCache();
         }
 
-        async function tocar(tipo, media, cantor, musica, elementoLi) {
+async function tocar(tipo, media, cantor, musica, elementoLi) {
             try {
                 await Tone.start();
             } catch(e) {}
@@ -755,6 +755,7 @@
                 if (progressPanel) progressPanel.style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
+                console.log("URL final a ser carregada:", url); // <--- Isto vai mostrar a URL exata na consola (F12)
 
                 try {
                     audioElementNativo = new Audio();
@@ -779,8 +780,8 @@
                     };
 
                     audioElementNativo.onerror = (e) => {
-                        console.error("Erro no elemento nativo:", e);
-                        alert("Erro ao carregar o ficheiro de áudio. Verifique o link.");
+                        console.error("Erro detalhado do elemento nativo:", e);
+                        alert(`Erro ao carregar o ficheiro. URL testada: ${url}`);
                     };
 
                     audioElementNativo.load();
@@ -791,7 +792,6 @@
                 }
             }
         }
-
         function iniciarMonitoramentoProgressoNativo() {
             if (progressInterval) clearInterval(progressInterval);
             progressInterval = setInterval(() => {
