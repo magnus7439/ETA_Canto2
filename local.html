@@ -596,13 +596,27 @@ function alterarPitch(delta) {
                 currentSemitones = novoValor;
                 atualizarDisplayPitch();
                 
-                if (stFilter) {
-                    // Atualiza o tom no SoundTouch e força o recálculo do shift
-                    stFilter.pitchSemitones = currentSemitones;
-                    stFilter.pitch = Math.pow(2, currentSemitones / 12);
-                } else if (audioBuffer && isPlayingST) {
-                    const tempoAtual = stPausedAt + (audioCtx.currentTime - stStartTime);
-                    tocarComPitchShift(tempoAtual);
+                const audio = document.getElementById('audio-player');
+                if (audio && audio.style.display !== 'none') {
+                    // Aplica a fórmula exata de semitons no motor nativo do navegador
+                    audio.playbackRate = Math.pow(2, currentSemitones / 12);
+                    audio.preservesPitch = false; // Desativa a preservação para permitir a alteração do tom
+                    audio.webkitPreservesPitch = false;
+                    audio.mozPreservesPitch = false;
+                }
+            }
+        }
+
+        function resetarPitch() {
+            if (currentSemitones !== 0) {
+                currentSemitones = 0;
+                atualizarDisplayPitch();
+                const audio = document.getElementById('audio-player');
+                if (audio) {
+                    audio.playbackRate = 1.0;
+                    audio.preservesPitch = true;
+                    audio.webkitPreservesPitch = true;
+                    audio.mozPreservesPitch = true;
                 }
             }
         }
