@@ -653,7 +653,7 @@ function normalizarUrlMidia(media) {
             atualizarStatusBotoesCache();
         }
 
-        async function tocar(tipo, media, cantor, musica, elementoLi) {
+async function tocar(tipo, media, cantor, musica, elementoLi) {
             const yt = document.getElementById('yt-player');
             const pitchPanel = document.getElementById('pitch-control-panel');
             const progressPanel = document.getElementById('progress-panel');
@@ -689,26 +689,29 @@ function normalizarUrlMidia(media) {
                 let url = normalizarUrlMidia(media);
 
                 try {
-                    // 1. Libera o áudio no evento de clique
+                    // 1. Inicia o contexto do Tone.js por gesto do usuário
                     await Tone.start();
 
-                    // 2. Carrega primeiro o buffer com Tone.Buffer (evita o erro de decodificação no constructor)
-                    const buffer = new Tone.ToneAudioBuffer(url, async () => {
-                        tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
-                        
-                        tonePlayer = new Tone.Player(buffer).connect(tonePitchShift);
-                        tonePlayer.start(0);
+                    // 2. Faz o download direto dos bytes do arquivo via fetch (suporta GitHub e Dropbox cru)
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error("Falha ao descarregar o ficheiro de áudio.");
+                    const arrayBuffer = await response.arrayBuffer();
 
-                        document.getElementById('time-total').innerText = formatarTempo(buffer.duration);
-                        iniciarMonitoramentoProgressoTone();
-                    }, (err) => {
-                        console.error("Erro no carregamento do buffer:", err);
-                        alert("Erro ao decodificar o arquivo de áudio. Verifique o link e tente novamente.");
-                    });
+                    // 3. Decodifica os bytes usando o motor nativo do navegador
+                    const audioBuffer = await Tone.context.decodeAudioData(arrayBuffer);
+
+                    // 4. Cria o efeito de Pitch Shift e o Player usando o buffer decodificado com sucesso
+                    tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
+                    
+                    tonePlayer = new Tone.Player(audioBuffer).connect(tonePitchShift);
+                    tonePlayer.start(0);
+
+                    document.getElementById('time-total').innerText = formatarTempo(audioBuffer.duration);
+                    iniciarMonitoramentoProgressoTone();
 
                 } catch (err) {
-                    console.error("Erro ao inicializar Tone:", err);
-                    alert("Erro ao inicializar o player de áudio.");
+                    console.error("Erro no processamento do áudio:", err);
+                    alert("Erro ao decodificar o áudio. Verifique se o link está correto e acessível.");
                 }
             }
         }
