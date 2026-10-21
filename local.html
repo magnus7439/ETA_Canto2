@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA - Roberto </title>
+    <title>Canto ETA - Roberto.</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -38,28 +38,48 @@
             border: 1px solid rgba(255, 80, 80, 0.5) !important;
         }
 
-        .master-player {
-            position: sticky; top: 10px; width: 600px; max-width: 95%;
-            padding: 15px; z-index: 100; text-align: center; margin-bottom: 10px;
+        .master-player {            
+            position: sticky; top: 10px; width: 95%; max-width: 600px;            
+            padding: 15px; z-index: 100; text-align: center; margin-bottom: 10px;            
+            overflow: hidden; min-height: 45px;
             box-sizing: border-box;
         }
-        .player-minimized { overflow: hidden; max-height: 60px; padding-bottom: 10px; }
-        .player-minimized #yt-player, .player-minimized audio { display: none !important; }
+        .player-minimized { resize: none; min-height: 45px; padding-bottom: 10px; }        
+        .player-minimized #yt-player, .player-minimized audio, .player-minimized .pitch-control-box { display: none !important; }        
         
         #now-playing { font-weight: bold; margin-bottom: 8px; font-size: 1em; padding-right: 40px; }
         audio { width: 100%; border-radius: 30px; margin-top: 10px; display: none; }
         
+        /* Painel de Controle de Tom (Pitch -3 a +3) */
+        .pitch-control-box {
+            display: none;
+            margin-top: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 8px 12px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .pitch-label { font-size: 0.85em; color: #ff4; font-weight: bold; white-space: nowrap; }
+        .pitch-buttons-group { display: flex; gap: 5px; align-items: center; }
+        .btn-pitch {
+            background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff; border-radius: 6px; padding: 5px 10px; font-weight: bold; cursor: pointer; font-size: 0.9em;
+        }
+        .btn-pitch:active { background: rgba(255, 255, 255, 0.3); }
+        #pitch-val-display { font-family: monospace; font-size: 1em; font-weight: bold; color: #00bcd4; min-width: 35px; text-align: center; }
+
         #yt-player { 
             display: none; 
             width: 100%; 
-            height: 100%;
-            min-height: 280px;
-            aspect-ratio: 16 / 9; 
+            aspect-ratio: 16/9; 
             border-radius: 10px; 
             border: none; 
             margin-top: 15px; 
         }
-        
+
         .toggle-player {
             position: absolute; top: 12px; right: 15px;
             background: rgba(255,255,255,0.1); border: none; color: #fff;
@@ -80,51 +100,34 @@
         .btn-pause { background: rgba(20, 80, 220, 0.8); }
         .btn-restart { background: rgba(200, 160, 20, 0.8); color: #000; }
 
-        /* --- CONTAINER DE SELEÇÃO E BOTÕES --- */
         .list-selector-container { 
-            width: 95%; 
-            max-width: 600px; 
-            margin-bottom: 10px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px; 
+            width: 95%; max-width: 600px; margin-bottom: 10px; 
+            display: flex; flex-direction: column; gap: 8px; 
         }
         #sheet-selector {
             width: 100%; padding: 12px; border-radius: 25px; background: rgba(100, 50, 150, 0.6);
             color: #ff4; border: 1px solid rgba(255, 255, 255, 0.3); font-weight: bold; outline: none; box-sizing: border-box;
         }
-        .selector-buttons-row {
-            display: flex;
-            gap: 8px;
-            width: 100%;
-        }
+        .selector-buttons-row { display: flex; gap: 8px; width: 100%; }
         .btn-reset-order {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2);
+            flex: 1; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2);
             color: #fff; border-radius: 25px; padding: 10px; cursor: pointer; font-size: 0.85em;
             font-weight: bold; text-transform: uppercase; outline: none;
         }
         .btn-cache-action {
-            flex: 1;
-            border: 1px solid rgba(255,255,255,0.3);
+            flex: 1; border: 1px solid rgba(255,255,255,0.3);
             color: #ff4; border-radius: 25px; padding: 10px; cursor: pointer; font-size: 0.85em;
             font-weight: bold; text-align: center; text-transform: uppercase;
             box-sizing: border-box; outline: none;
         }
-        .btn-gerenciar-toggle {
-            background: rgba(180, 80, 20, 0.6); color: #fff;
-        }
+        .btn-gerenciar-toggle { background: rgba(180, 80, 20, 0.6); color: #fff; }
         body.modo-gerenciamento .btn-gerenciar-toggle {
-            background: rgba(220, 40, 40, 0.9);
-            animation: pulsar 1.5s infinite;
+            background: rgba(220, 40, 40, 0.9); animation: pulsar 1.5s infinite;
         }
         @keyframes pulsar {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
+            0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; }
         }
 
-        /* --- BARRA DE BUSCA --- */
         .search-container { width: 95%; max-width: 480px; margin-bottom: 20px; position: relative; }
         #search-input {
             width: 100%; padding: 12px 45px 12px 20px; border-radius: 25px;
@@ -151,11 +154,7 @@
         .interpreter { color: #ff4; font-weight: bold; font-size: 1.03em; text-transform: uppercase; }
         .song-title { font-size: 1.01em; color: #fff; }
 
-        /* --- BOTÕES DE AÇÃO --- */
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-        }
+        .action-buttons { display: flex; gap: 8px; }
         .btn-play {
             background: rgba(255, 255, 255, 0.1); color: #ff4; border: none;
             border-radius: 50%; width: 48px; height: 48px; cursor: pointer; font-size: 1.3em;
@@ -166,24 +165,15 @@
             border-radius: 50%; width: 48px; height: 48px; cursor: pointer; font-size: 1.1em;
             display: flex; align-items: center; justify-content: center; transition: 0.3s background;
         }
-        .btn-cache.cached {
-            background: rgba(30, 180, 80, 0.6);
-            color: #fff;
-        }
+        .btn-cache.cached { background: rgba(30, 180, 80, 0.6); color: #fff; }
         .btn-delete-sheet {
             background: rgba(220, 20, 20, 0.9); color: #fff; border: none;
             border-radius: 50%; width: 48px; height: 48px; cursor: pointer;
-            display: none; 
-            align-items: center; justify-content: center; font-size: 1.2em;
+            display: none; align-items: center; justify-content: center; font-size: 1.2em;
         }
         
-        body.modo-gerenciamento .btn-play, 
-        body.modo-gerenciamento .btn-cache {
-            display: none !important;
-        }
-        body.modo-gerenciamento .btn-delete-sheet {
-            display: flex !important;
-        }
+        body.modo-gerenciamento .btn-play, body.modo-gerenciamento .btn-cache { display: none !important; }
+        body.modo-gerenciamento .btn-delete-sheet { display: flex !important; }
 
         .done { opacity: 0.3; filter: grayscale(100%); }
         .notes-field {
@@ -193,9 +183,21 @@
     </style>
 </head>
 <body>
-    <div id="main-player-container" class="master-panel glass-panel player-minimized">
+    <div id="main-player-container" class="master-player glass-panel player-minimized">
         <button class="toggle-player" id="btn-toggle" onclick="togglePlayer()">▼</button>
         <div id="now-playing">Selecione uma faixa</div>
+        
+        <!-- Painel de Transposição de Tom (-3 a +3 Semitons) -->
+        <div id="pitch-control-panel" class="pitch-control-box">
+            <span class="pitch-label">🎵 Tonalidade:</span>
+            <div class="pitch-buttons-group">
+                <button class="btn-pitch" onclick="alterarPitch(-1)">-</button>
+                <span id="pitch-val-display">0 st</span>
+                <button class="btn-pitch" onclick="alterarPitch(1)">+</button>
+                <button class="btn-pitch" style="font-size: 0.75em; padding: 5px 6px;" onclick="resetarPitch()" title="Resetar Tom">Reset</button>
+            </div>
+        </div>
+
         <audio id="audio-player" controls></audio>
         <iframe id="yt-player" allow="autoplay"></iframe>
     </div>
@@ -208,7 +210,7 @@
             <option value="911593347">📅 QUARTA-FEIRA</option>
             <option value="1593190716">📅 QUINTA-FEIRA</option>
             <option value="1611821250">📅 SEXTA-FEIRA</option>
-            <option value="1644722704">📅 SÁBADO</option>
+            <option value="1644722704">📅 SABADO</option>
         </select>
         
         <div class="selector-buttons-row">
@@ -245,14 +247,26 @@
         const CACHE_NAME = 'canto-eta-media-v1';
         let modoGerenciamentoAtivo = false;
 
+        // Variáveis do Motor de Áudio Web Audio API para Pitch Shifting (-3 a +3 semitons)
+        let audioCtx = null;
+        let audioBufferOriginal = null;
+        let audioSourceNode = null;
+        let audioGainNode = null;
+        let currentSemitones = 0;
+        let isPlayingWebAudio = false;
+        let audioStartTime = 0;
+        let audioPausedAt = 0;
+        let urlMidiaAtual = "";
+        let metaInfoAtual = { tipo: '', cantor: '', musica: '' };
+
         const MAPA_NOMES_DIAS = {
             '1960210650': 'DOMINGO',
-            '1517164028': 'SEGUNDA-FEIRA',
-            '216102701':  'TERÇA-FEIRA',
-            '911593347':  'QUARTA-FEIRA',
-            '1593190716': 'QUINTA-FEIRA',
-            '1611821250': 'SEXTA-FEIRA',
-            '1644722704': 'SÁBADO'
+            '1517164028': 'SEGUNDA',
+            '216102701':  'TERÇA',
+            '911593347':  'QUARTA',
+            '1593190716': 'QUINTA',
+            '1611821250': 'SEXTA',
+            '1644722704': 'SABADO'
         };
 
         window.addEventListener('load', () => {
@@ -291,31 +305,55 @@
             }
         }
 
+        function pararAudioWebAPI() {
+            if (audioSourceNode) {
+                try { audioSourceNode.stop(); audioSourceNode.disconnect(); } catch(e){}
+                audioSourceNode = null;
+            }
+            isPlayingWebAudio = false;
+        }
+
         function stopAll() {
             const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
             document.getElementById('float-ctrl').style.display = 'none';
+            document.getElementById('pitch-control-panel').style.display = 'none';
+            
             audio.pause(); audio.src = ""; yt.src = "";
             audio.style.display = 'none'; yt.style.display = 'none';
+            pararAudioWebAPI();
+            
+            audioPausedAt = 0;
+            currentSemitones = 0;
+            atualizarDisplayPitch();
+
             document.getElementById('main-player-container').classList.add('player-minimized');
             document.getElementById('btn-toggle').innerText = '▼';
             document.getElementById('now-playing').innerText = "Selecione uma faixa";
         }
 
         function pauseMedia() {
-            const audio = document.getElementById('audio-player');
+            const yt = document.getElementById('yt-player');
             const btn = document.getElementById('btn-pause-float');
-            if (audio.style.display !== 'none') {
-                if (audio.paused) { audio.play(); btn.innerText = "⏸ Pausar"; }
-                else { audio.pause(); btn.innerText = "▶ Play"; }
+
+            if (isPlayingWebAudio) {
+                pararAudioWebAPI();
+                audioPausedAt += (audioCtx.currentTime - audioStartTime);
+                btn.innerText = "▶ Play";
+            } else if (audioBufferOriginal && audioPausedAt > 0) {
+                tocarBufferAudio(audioPausedAt);
+                btn.innerText = "⏸ Pausar";
+            } else if (yt.style.display !== 'none') {
+                // Para iframe do YouTube não há controle total nativo direto sem API oficial JS do YT
             }
         }
 
         function restartMedia() {
-            const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
-            if (audio.style.display !== 'none') {
-                audio.currentTime = 0; audio.play();
+            if (audioBufferOriginal) {
+                pararAudioWebAPI();
+                audioPausedAt = 0;
+                tocarBufferAudio(0);
                 document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
             } else if (yt.style.display !== 'none') {
                 const oldSrc = yt.src; yt.src = ""; yt.src = oldSrc;
@@ -359,20 +397,28 @@
             }
         }
 
-        async function deletarItemPlanilha(musica, cantor, observacao, elementoLi) {
+        async function deletarItemPlanilha(elementoLi) {
             const diaSemana = getNomeDiaAtual();
-            let infoConcatenada = `${musica} (${cantor})`;
-            if (observacao && observacao.trim() !== "") {
-                infoConcatenada += ` - ${observacao}`;
+            const part1 = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+            const part2 = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
+            const notesField = elementoLi.querySelector('.notes-field')?.innerText.trim() || '';
+
+            let infoConcatenada = `${part2} (${part1})`;
+            if (elementoLi.classList.contains('is-study')) {
+                infoConcatenada = `${part1} (${part2})`;
+            }
+            if (notesField !== "") {
+                infoConcatenada += ` - ${notesField}`;
             }
 
-            if (!confirm(`Deseja realmente apagar "${musica}" da planilha de ${diaSemana}?`)) return;
+            if (!confirm(`Deseja realmente apagar este item da planilha de ${diaSemana}?`)) return;
 
             try {
                 elementoLi.style.opacity = "0.3";
                 const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}`;
 
                 await fetch(urlCompleta, { method: 'GET', mode: 'no-cors' });
+                
                 elementoLi.remove();
                 salvarEstadoLocal();
                 alert("Comando de exclusão enviado para a planilha!");
@@ -392,6 +438,81 @@
                 url = `https://docs.google.com/uc?export=open&id=${url}`;
             }
             return url;
+        }
+
+        // --- FUNÇÕES DE CONTROLE DE TONALIDADE (PITCH -3 a +3 Semitons) ---
+        function atualizarDisplayPitch() {
+            const display = document.getElementById('pitch-val-display');
+            if (display) {
+                display.innerText = (currentSemitones > 0 ? `+${currentSemitones}` : currentSemitones) + " st";
+            }
+        }
+
+        function alterarPitch(delta) {
+            const novoValor = currentSemitones + delta;
+            // Limite rigoroso entre -3 e +3 semitons
+            if (novoValor >= -3 && novoValor <= 3) {
+                currentSemitones = novoValor;
+                atualizarDisplayPitch();
+                if (audioBufferOriginal) {
+                    // Recomeça a tocar do ponto atual ajustando a nova taxa de tom
+                    const tempoAtual = audioPausedAt + (isPlayingWebAudio ? (audioCtx.currentTime - audioStartTime) : 0);
+                    pararAudioWebAPI();
+                    tocarBufferAudio(tempoAtual);
+                }
+            }
+        }
+
+        function resetarPitch() {
+            if (currentSemitones !== 0) {
+                currentSemitones = 0;
+                atualizarDisplayPitch();
+                if (audioBufferOriginal) {
+                    const tempoAtual = audioPausedAt + (isPlayingWebAudio ? (audioCtx.currentTime - audioStartTime) : 0);
+                    pararAudioWebAPI();
+                    tocarBufferAudio(tempoAtual);
+                }
+            }
+        }
+
+        async function tocarBufferAudio(offsetSeconds = 0) {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            pararAudioWebAPI();
+
+            audioSourceNode = audioCtx.createBufferSource();
+            audioSourceNode.buffer = audioBufferOriginal;
+
+            // Fórmula de transposição baseada em semitons: 2^(semitons / 12)
+            const playbackRate = Math.pow(2, currentSemitones / 12);
+            audioSourceNode.playbackRate.value = playbackRate;
+
+            if (!audioGainNode) {
+                audioGainNode = audioCtx.createGain();
+                audioGainNode.connect(audioCtx.destination);
+            }
+
+            audioSourceNode.connect(audioGainNode);
+
+            audioStartTime = audioCtx.currentTime;
+            audioPausedAt = offsetSeconds;
+
+            // Inicia a reprodução considerando o deslocamento (offset)
+            audioSourceNode.start(0, offsetSeconds);
+            isPlayingWebAudio = true;
+
+            audioSourceNode.onended = () => {
+                if (isPlayingWebAudio && (audioCtx.currentTime - audioStartTime + offsetSeconds >= audioBufferOriginal.duration)) {
+                    isPlayingWebAudio = false;
+                    audioPausedAt = 0;
+                    document.getElementById('btn-pause-float').innerText = "▶ Play";
+                }
+            };
         }
 
         async function toggleCache(url, btnElement) {
@@ -570,15 +691,11 @@
                         displayHTML = `<span class="interpreter">${item.cantor}</span><span class="song-title">${item.musica}</span>`;
                     }
 
-                    const escapedMusica = item.musica.replace(/'/g, "\\'");
-                    const escapedCantor = item.cantor.replace(/'/g, "\\'");
-                    const escapedNotes = (item.notes || '').replace(/'/g, "\\'");
-
                     let botoesAcao = `
                         <div class="action-buttons">
                             ${temMidia && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
                             ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor}', '${item.musica}')">▶</button>` : ''}
-                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha('${escapedMusica}', '${escapedCantor}', '${escapedNotes}', this.closest('li'))" title="Excluir da Planilha">🗑️</button>
+                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir da Planilha">🗑️</button>
                         </div>
                     `;
 
@@ -602,6 +719,7 @@
         async function tocar(tipo, media, cantor, musica) {
             const audio = document.getElementById('audio-player');
             const yt = document.getElementById('yt-player');
+            const pitchPanel = document.getElementById('pitch-control-panel');
             
             const playerContainer = document.getElementById('main-player-container');
             playerContainer.classList.remove('player-minimized');
@@ -611,33 +729,57 @@
             document.getElementById('float-ctrl').style.display = 'flex';
             document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
             
+            // Limpa players anteriores
             audio.pause(); audio.src = ""; yt.src = "";
             audio.style.display = 'none'; yt.style.display = 'none';
+            pararAudioWebAPI();
+            audioBufferOriginal = null;
+            currentSemitones = 0;
+            atualizarDisplayPitch();
             
             const ehYouTube = media.includes('youtube.com') || media.includes('youtu.be') || media.length === 11;
             
             if (ehYouTube) {
+                pitchPanel.style.display = 'none'; // YouTube não permite pitch shifting direto via WebAudio facilmente
                 yt.style.display = 'block';
                 document.getElementById('btn-pause-float').style.display = 'none';
                 let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
                 yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
             } else {
-                audio.style.display = 'block';
+                pitchPanel.style.display = 'flex'; // Exibe o controle de pitch de -3 a +3 semitons
                 document.getElementById('btn-pause-float').style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
+                urlMidiaAtual = url;
+
                 try {
                     const cache = await caches.open(CACHE_NAME);
-                    const cachedRes = await cache.match(url);
+                    let cachedRes = await cache.match(url);
+                    
+                    let arrayBuffer;
                     if (cachedRes) {
-                        const blob = await cachedRes.blob();
-                        url = URL.createObjectURL(blob); 
+                        arrayBuffer = await cachedRes.arrayBuffer();
+                    } else {
+                        const response = await fetch(url);
+                        arrayBuffer = await response.arrayBuffer();
                     }
-                } catch (e) {}
 
-                audio.src = url; 
-                audio.load(); 
-                audio.play();
+                    if (!audioCtx) {
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    
+                    // Decodifica o áudio para buffer manipulável por pitch shifting
+                    audioBufferOriginal = await audioCtx.decodeAudioData(arrayBuffer);
+                    tocarBufferAudio(0);
+
+                } catch (e) {
+                    console.error("Erro ao carregar áudio via WebAudio, recorrendo ao player nativo:", e);
+                    // Fallback para tag audio HTML padrão caso haja falha de CORS estrito
+                    audio.style.display = 'block';
+                    audio.src = url;
+                    audio.load();
+                    audio.play();
+                }
             }
         }
 
