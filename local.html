@@ -529,15 +529,15 @@ function normalizarUrlMidia(media) {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
+            // Desbloqueia o AudioContext bloqueado por política de segurança do Chrome
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
 
             pararSoundTouch();
 
-            // Fallback seguro caso a biblioteca SoundTouch falhe em carregar o objeto global
             if (typeof soundtouch === 'undefined' || !soundtouch.WebAudioBufferSource) {
-                console.warn("SoundTouch não detectado, usando player nativo com fallback.");
+                console.warn("SoundTouch não carregado. Verifique o arquivo soundtouch.js");
                 tocarFallbackNativo(offsetSeconds);
                 return;
             }
@@ -545,6 +545,7 @@ function normalizarUrlMidia(media) {
             stSource = new soundtouch.WebAudioBufferSource(audioBuffer);
             stFilter = new soundtouch.SimpleFilter(stSource, new soundtouch.SoundTouch(audioCtx.sampleRate));
             
+            // Aplica os semitons selecionados mantendo a velocidade intacta
             stFilter.pitchSemitones = currentSemitones;
             stFilter.tempo = 1.0; 
 
@@ -559,7 +560,6 @@ function normalizarUrlMidia(media) {
 
             monitorarProgressoST();
         }
-
         function tocarFallbackNativo(offsetSeconds) {
             const audio = document.getElementById('audio-player');
             audio.style.display = 'block';
