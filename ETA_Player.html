@@ -7,7 +7,7 @@
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <!-- Tone.js para Pitch Shift independente da velocidade -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="Tone.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -785,7 +785,7 @@
             atualizarStatusBotoesCache();
         }
 
-        async function tocar(tipo, media, cantor, musica, elementoLi) {
+async function tocar(tipo, media, cantor, musica, elementoLi) {
             const yt = document.getElementById('yt-player');
             const pitchPanel = document.getElementById('pitch-control-panel');
             const progressPanel = document.getElementById('progress-panel');
@@ -823,16 +823,17 @@
                 
                 let url = normalizarUrlMidia(media);
 
-                // Ativa o Tone.js por gesto do usuário
+                // Garante a inicialização do contexto de áudio exigida pelo Chrome
                 await Tone.start();
 
-                // Cria o efeito de Pitch Shift independente do tempo e o Player do Tone.js
+                // Cria o efeito de Pitch Shift independente do tempo
                 tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
                 
+                // Carrega o player aguardando o buffer carregar com segurança
                 tonePlayer = new Tone.Player({
                     url: url,
-                    autostart: true,
                     onload: () => {
+                        tonePlayer.start(0);
                         document.getElementById('time-total').innerText = formatarTempo(tonePlayer.buffer.duration);
                         iniciarMonitoramentoProgressoTone();
                     }
