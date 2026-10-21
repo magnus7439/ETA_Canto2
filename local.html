@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Canto ETA - Roberto.</title>
     <link rel="icon" href="data:,">
-    <!-- Biblioteca SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <!-- Biblioteca Tone.js para Pitch Shift Independente da Velocidade -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -52,6 +49,8 @@
         .player-minimized .pitch-control-box, .player-minimized .progress-container { display: none !important; }        
         
         #now-playing { font-weight: bold; margin-bottom: 8px; font-size: 1em; padding-right: 40px; }
+        
+        /* Player de Áudio Nativo Otimizado */
         audio { width: 100%; border-radius: 30px; margin-top: 10px; display: none; }
         
         .progress-container {
@@ -99,12 +98,8 @@
         #pitch-val-display { font-family: monospace; font-size: 0.9em; font-weight: bold; color: #00bcd4; min-width: 35px; text-align: center; }
 
         #yt-player { 
-            display: none; 
-            width: 100%; 
-            aspect-ratio: 16/9; 
-            border-radius: 10px; 
-            border: none; 
-            margin-top: 15px; 
+            display: none; width: 100%; aspect-ratio: 16/9; 
+            border-radius: 10px; border: none; margin-top: 15px; 
         }
 
         .toggle-player {
@@ -232,7 +227,8 @@
             </div>
         </div>
 
-        <audio id="audio-player" controls></audio>
+        <!-- Tag de Áudio Nativa com Suporte a Pitch Shift independente de velocidade -->
+        <audio id="audio-player"></audio>
         <iframe id="yt-player" allow="autoplay"></iframe>
     </div>
 
@@ -280,13 +276,8 @@
         
         const CACHE_NAME = 'canto-eta-media-v1';
         let modoGerenciamentoAtivo = false;
-
-        // Variáveis do Tone.js para Pitch Shift independente da velocidade
-        let tonePlayer = null;
-        let tonePitchShift = null;
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
-        let progressInterval = null;
 
         const NOTAS_CROMATICAS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const NOTAS_FLAT_MAP = { "Db":"C#", "Eb":"D#", "Gb":"F#", "Ab":"G#", "Bb":"A#" };
@@ -314,6 +305,7 @@
         window.addEventListener('load', () => {
             const seletor = document.getElementById('sheet-selector');
             if (seletor) seletor.value = GID_ATUAL;
+            configurarEventosAudioNativo();
         });
 
         function getNomeDiaAtual() {
@@ -419,19 +411,26 @@
             }
         }
 
-        function pararTonePlayer() {
-            if (tonePlayer) {
-                try { tonePlayer.stop(); tonePlayer.dispose(); } catch(e){}
-                tonePlayer = null;
-            }
-            if (tonePitchShift) {
-                try { tonePitchShift.dispose(); } catch(e){}
-                tonePitchShift = null;
-            }
-            if (progressInterval) {
-                clearInterval(progressInterval);
-                progressInterval = null;
-            }
+        function configurarEventosAudioNativo() {
+            const audio = document.getElementById('audio-player');
+            
+            // Garante suporte a preservação de tom nativa nos navegadores modernos
+            audio.preservesPitch = true;
+            audio.mozPreservesPitch = true;
+            audio.webkitPreservesPitch = true;
+
+            audio.addEventListener('timeupdate', () => {
+                if (!isNaN(audio.duration) && audio.duration > 0) {
+                    const prog = (audio.currentTime / audio.duration) * 100;
+                    document.getElementById('seek-bar').value = prog;
+                    document.getElementById('time-current').innerText = formatarTempo(audio.currentTime);
+                    document.getElementById('time-total').innerText = formatarTempo(audio.duration);
+                }
+            });
+
+            audio.addEventListener('ended', () => {
+                document.getElementById('btn-pause-float').innerText = "▶ Play";
+            });
         }
 
         function stopAll() {
@@ -443,7 +442,6 @@
             
             audio.pause(); audio.src = ""; yt.src = "";
             audio.style.display = 'none'; yt.style.display = 'none';
-            pararTonePlayer();
             
             currentSemitones = 0;
             tomOriginalExtraido = null;
@@ -455,58 +453,54 @@
         }
 
         function pauseMedia() {
+            const audio = document.getElementById('audio-player');
             const btn = document.getElementById('btn-pause-float');
-            if (tonePlayer) {
-                if (tonePlayer.state === "started") {
-                    tonePlayer.pause();
-                    btn.innerText = "▶ Play";
-                } else if (tonePlayer.state === "paused") {
-                    tonePlayer.start();
+            if (audio.style.display !== 'none') {
+                if (audio.paused) {
+                    audio.play();
                     btn.innerText = "⏸ Pausar";
+                } else {
+                    audio.pause();
+                    btn.innerText = "▶ Play";
                 }
             }
         }
 
         function restartMedia() {
-            if (tonePlayer) {
-                tonePlayer.stop();
-                tonePlayer.start(0, 0);
+            const audio = document.getElementById('audio-player');
+            if (audio.style.display !== 'none') {
+                audio.currentTime = 0;
+                audio.play();
                 document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
             }
         }
 
         function seekingAudio(valPorcentagem) {
-            if (tonePlayer && tonePlayer.buffer.loaded) {
-                const duracaoTotal = tonePlayer.buffer.duration;
-                const novoTempo = (valPorcentagem / 100) * duracaoTotal;
-                const estavaTocando = (tonePlayer.state === "started");
-                
-                tonePlayer.stop();
-                if (estavaTocando) {
-                    tonePlayer.start(0, novoTempo);
-                } else {
-                    document.getElementById('time-current').innerText = formatarTempo(novoTempo);
-                }
+            const audio = document.getElementById('audio-player');
+            if (!isNaN(audio.duration) && audio.duration > 0) {
+                audio.currentTime = (valPorcentagem / 100) * audio.duration;
             }
         }
 
-        function iniciarMonitoramentoProgresso() {
-            if (progressInterval) clearInterval(progressInterval);
-            progressInterval = setInterval(() => {
-                if (tonePlayer && tonePlayer.state === "started" && tonePlayer.buffer.loaded) {
-                    const duracaoTotal = tonePlayer.buffer.duration;
-                    const tempoAtual = tonePlayer.progress * duracaoTotal;
-                    
-                    document.getElementById('seek-bar').value = (tempoAtual / duracaoTotal) * 100;
-                    document.getElementById('time-current').innerText = formatarTempo(tempoAtual);
-                    document.getElementById('time-total').innerText = formatarTempo(duracaoTotal);
+        function alterarPitch(delta) {
+            const novoValor = currentSemitones + delta;
+            if (novoValor >= -3 && novoValor <= 3) {
+                currentSemitones = novoValor;
+                atualizarDisplayPitch();
+                
+                const audio = document.getElementById('audio-player');
+                // Fórmula de alteração de tom sem afetar a velocidade no motor nativo
+                audio.playbackRate = Math.pow(2, currentSemitones / 12);
+            }
+        }
 
-                    if (tempoAtual >= duracaoTotal) {
-                        clearInterval(progressInterval);
-                        document.getElementById('btn-pause-float').innerText = "▶ Play";
-                    }
-                }
-            }, 200);
+        function resetarPitch() {
+            if (currentSemitones !== 0) {
+                currentSemitones = 0;
+                atualizarDisplayPitch();
+                const audio = document.getElementById('audio-player');
+                audio.playbackRate = 1.0;
+            }
         }
 
         function mudarLista(novoGid) { 
@@ -587,28 +581,6 @@
                 url = `https://docs.google.com/uc?export=open&id=${url}`;
             }
             return url;
-        }
-
-        async function alterarPitch(delta) {
-            const novoValor = currentSemitones + delta;
-            if (novoValor >= -3 && novoValor <= 3) {
-                currentSemitones = novoValor;
-                atualizarDisplayPitch();
-                if (tonePitchShift) {
-                    // Altera o tom no Tone.js instantaneamente sem alterar a velocidade
-                    tonePitchShift.pitch = currentSemitones;
-                }
-            }
-        }
-
-        async function resetarPitch() {
-            if (currentSemitones !== 0) {
-                currentSemitones = 0;
-                atualizarDisplayPitch();
-                if (tonePitchShift) {
-                    tonePitchShift.pitch = 0;
-                }
-            }
         }
 
         async function toggleCache(url, btnElement) {
@@ -830,9 +802,8 @@
             tomOriginalExtraido = extrairTomDaString(notasItem) || extrairTomDaString(musica) || extrairTomDaString(cantor);
 
             audio.pause(); audio.src = ""; yt.src = "";
-            audio.style.display = 'none'; yt.style.display = 'none';
-            pararTonePlayer();
             currentSemitones = 0;
+            audio.playbackRate = 1.0;
             atualizarDisplayPitch();
             
             const ehYouTube = media.includes('youtube.com') || media.includes('youtu.be') || media.length === 11;
@@ -841,30 +812,31 @@
                 pitchPanel.style.display = 'none';
                 progressPanel.style.display = 'none';
                 yt.style.display = 'block';
+                audio.style.display = 'none';
                 document.getElementById('btn-pause-float').style.display = 'none';
                 let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
                 yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
             } else {
                 pitchPanel.style.display = 'flex';
                 progressPanel.style.display = 'flex';
+                yt.style.display = 'none';
+                audio.style.display = 'block';
                 document.getElementById('btn-pause-float').style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
 
-                // Garante a ativação do contexto de áudio do Tone.js após o clique do usuário
-                await Tone.start();
-
-                // Cria o efeito de Pitch Shift independente do tempo e o Player do Tone.js
-                tonePitchShift = new Tone.PitchShift({ pitch: 0 }).toDestination();
-                
-                tonePlayer = new Tone.Player({
-                    url: url,
-                    autostart: true,
-                    onload: () => {
-                        document.getElementById('time-total').innerText = formatarTempo(tonePlayer.buffer.duration);
-                        iniciarMonitoramentoProgresso();
+                try {
+                    const cache = await caches.open(CACHE_NAME);
+                    let cachedRes = await cache.match(url);
+                    if (cachedRes) {
+                        const blob = await cachedRes.blob();
+                        url = URL.createObjectURL(blob);
                     }
-                }).connect(tonePitchShift);
+                } catch (e) {}
+
+                audio.src = url;
+                audio.load();
+                audio.play();
             }
         }
 
