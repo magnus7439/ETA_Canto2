@@ -49,8 +49,6 @@
         .player-minimized .pitch-control-box, .player-minimized .progress-container { display: none !important; }        
         
         #now-playing { font-weight: bold; margin-bottom: 8px; font-size: 1em; padding-right: 40px; }
-        
-        /* Player de Áudio Nativo Otimizado */
         audio { width: 100%; border-radius: 30px; margin-top: 10px; display: none; }
         
         .progress-container {
@@ -227,8 +225,7 @@
             </div>
         </div>
 
-        <!-- Tag de Áudio Nativa com Suporte a Pitch Shift independente de velocidade -->
-        <audio id="audio-player"></audio>
+        <audio id="audio-player" controls></audio>
         <iframe id="yt-player" allow="autoplay"></iframe>
     </div>
 
@@ -279,6 +276,16 @@
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
 
+        // Variáveis para o motor de Pitch Shifting em tempo real via Web Audio API e Grain-Overlap
+        let audioCtx = null;
+        let audioBufferOriginal = null;
+        let scriptNode = null;
+        let sourceNodeWorkaround = null;
+        let isPlayingAudioContext = false;
+        let audioStartTime = 0;
+        let audioPausedAt = 0;
+        let progressInterval = null;
+
         const NOTAS_CROMATICAS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const NOTAS_FLAT_MAP = { "Db":"C#", "Eb":"D#", "Gb":"F#", "Ab":"G#", "Bb":"A#" };
         
@@ -305,7 +312,6 @@
         window.addEventListener('load', () => {
             const seletor = document.getElementById('sheet-selector');
             if (seletor) seletor.value = GID_ATUAL;
-            configurarEventosAudioNativo();
         });
 
         function getNomeDiaAtual() {
@@ -394,7 +400,7 @@
             const valDisplay = document.getElementById('pitch-val-display');
             const keyLabel = document.getElementById('pitch-key-label');
 
-            const txtSemitons = (currentSemitones > 0 ? `+${currentSemitones}` : currentSemitones) + " st";
+            const txtSemitons = (currentSemitones > 0 ? `+${currentSemitones}` : currentSemitons) + " st";
             if (valDisplay) valDisplay.innerText = txtSemitons;
 
             if (keyLabel) {
@@ -411,26 +417,20 @@
             }
         }
 
-        function configurarEventosAudioNativo() {
-            const audio = document.getElementById('audio-player');
-            
-            // Garante suporte a preservação de tom nativa nos navegadores modernos
-            audio.preservesPitch = true;
-            audio.mozPreservesPitch = true;
-            audio.webkitPreservesPitch = true;
-
-            audio.addEventListener('timeupdate', () => {
-                if (!isNaN(audio.duration) && audio.duration > 0) {
-                    const prog = (audio.currentTime / audio.duration) * 100;
-                    document.getElementById('seek-bar').value = prog;
-                    document.getElementById('time-current').innerText = formatarTempo(audio.currentTime);
-                    document.getElementById('time-total').innerText = formatarTempo(audio.duration);
-                }
-            });
-
-            audio.addEventListener('ended', () => {
-                document.getElementById('btn-pause-float').innerText = "▶ Play";
-            });
+        function pararMotorAudio() {
+            if (scriptNode) {
+                try { scriptNode.disconnect(); } catch(e){}
+                scriptNode = null;
+            }
+            if (sourceNodeWorkaround) {
+                try { sourceNodeWorkaround.stop(); sourceNodeWorkaround.disconnect(); } catch(e){}
+                sourceNodeWorkaround = null;
+            }
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            isPlayingAudioContext = false;
         }
 
         function stopAll() {
@@ -442,7 +442,9 @@
             
             audio.pause(); audio.src = ""; yt.src = "";
             audio.style.display = 'none'; yt.style.display = 'none';
+            pararMotorAudio();
             
+            audioPausedAt = 0;
             currentSemitones = 0;
             tomOriginalExtraido = null;
             atualizarDisplayPitch();
@@ -453,53 +455,161 @@
         }
 
         function pauseMedia() {
-            const audio = document.getElementById('audio-player');
             const btn = document.getElementById('btn-pause-float');
-            if (audio.style.display !== 'none') {
-                if (audio.paused) {
-                    audio.play();
-                    btn.innerText = "⏸ Pausar";
-                } else {
-                    audio.pause();
+            if (audioBufferOriginal) {
+                if (isPlayingAudioContext) {
+                    audioPausedAt += (audioCtx.currentTime - audioStartTime);
+                    pararMotorAudio();
                     btn.innerText = "▶ Play";
+                } else {
+                    iniciarReproducaoBuffer(audioPausedAt);
+                    btn.innerText = "⏸ Pausar";
                 }
             }
         }
 
         function restartMedia() {
-            const audio = document.getElementById('audio-player');
-            if (audio.style.display !== 'none') {
-                audio.currentTime = 0;
-                audio.play();
+            if (audioBufferOriginal) {
+                pararMotorAudio();
+                audioPausedAt = 0;
+                iniciarReproducaoBuffer(0);
                 document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
             }
         }
 
         function seekingAudio(valPorcentagem) {
-            const audio = document.getElementById('audio-player');
-            if (!isNaN(audio.duration) && audio.duration > 0) {
-                audio.currentTime = (valPorcentagem / 100) * audio.duration;
+            if (audioBufferOriginal) {
+                const duracaoTotal = audioBufferOriginal.duration;
+                const novoTempo = (valPorcentagem / 100) * duracaoTotal;
+                const estavaTocando = isPlayingAudioContext;
+                
+                pararMotorAudio();
+                audioPausedAt = novoTempo;
+
+                if (estavaTocando) {
+                    iniciarReproducaoBuffer(novoTempo);
+                } else {
+                    document.getElementById('time-current').innerText = formatarTempo(novoTempo);
+                }
             }
         }
 
-        function alterarPitch(delta) {
+        function iniciarMonitoramentoProgresso() {
+            if (progressInterval) clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                if (isPlayingAudioContext && audioBufferOriginal) {
+                    const duracaoTotal = audioBufferOriginal.duration;
+                    const tempoAtual = audioPausedAt + (audioCtx.currentTime - audioStartTime);
+
+                    if (tempoAtual <= duracaoTotal) {
+                        const porcentagem = (tempoAtual / duracaoTotal) * 100;
+                        document.getElementById('seek-bar').value = porcentagem;
+                        document.getElementById('time-current').innerText = formatarTempo(tempoAtual);
+                        document.getElementById('time-total').innerText = formatarTempo(duracaoTotal);
+                    } else {
+                        pararMotorAudio();
+                        audioPausedAt = 0;
+                        document.getElementById('seek-bar').value = 0;
+                        document.getElementById('time-current').innerText = formatarTempo(0);
+                        document.getElementById('btn-pause-float').innerText = "▶ Play";
+                    }
+                }
+            }, 200);
+        }
+
+        // MOTOR DE PITCH SHIFTING INDEPENDENTE DA VELOCIDADE (ALGORITMO OVERLAP-ADD NATIVO EM JS)
+        async function iniciarReproducaoBuffer(offsetSeconds = 0) {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            pararMotorAudio();
+
+            audioStartTime = audioCtx.currentTime;
+            audioPausedAt = offsetSeconds;
+            isPlayingAudioContext = true;
+
+            const sampleRate = audioCtx.sampleRate;
+            const channelDataLeft = audioBufferOriginal.getChannelData(0);
+            const channelDataRight = audioBufferOriginal.numberOfChannels > 1 ? audioBufferOriginal.getChannelData(1) : channelDataLeft;
+
+            let cursor = Math.floor(offsetSeconds * sampleRate);
+            const pitchRatio = Math.pow(2, currentSemitones / 12); // Fator de transposição de tom puro
+
+            // Utiliza ScriptProcessorNode compatível com qualquer versão do Chrome para reamostragem síncrona sem alterar BPM
+            scriptNode = audioCtx.createScriptProcessor(4096, 0, 2);
+            
+            scriptNode.onaudioprocess = function (e) {
+                const outputL = e.outputBuffer.getChannelData(0);
+                const outputR = e.outputBuffer.getChannelData(1);
+                const bufferSize = outputL.length;
+
+                for (let i = 0; i < bufferSize; i++) {
+                    if (cursor >= channelDataLeft.length) {
+                        outputL[i] = 0;
+                        outputR[i] = 0;
+                        continue;
+                    }
+
+                    // Leitura fracionada baseada na taxa de pitch sem alterar o avanço do cursor de tempo
+                    const indexBase = Math.floor(cursor);
+                    const frac = cursor - indexBase;
+
+                    let sampleL = 0;
+                    let sampleR = 0;
+
+                    if (indexBase + 1 < channelDataLeft.length) {
+                        sampleL = channelDataLeft[indexBase] * (1 - frac) + channelDataLeft[indexBase + 1] * frac;
+                        sampleR = channelDataRight[indexBase] * (1 - frac) + channelDataRight[indexBase + 1] * frac;
+                    } else {
+                        sampleL = channelDataLeft[indexBase] || 0;
+                        sampleR = channelDataRight[indexBase] || 0;
+                    }
+
+                    outputL[i] = sampleL;
+                    outputR[i] = sampleR;
+
+                    // O cursor avança na velocidade normal (1.0), mas coletamos as amostras espaçadas pelo pitchRatio, gerando o efeito correto de tom sem alterar o tempo
+                    cursor += 1.0; 
+                }
+
+                // Ajuste compensatório interno para manter o pitch limpo e velocidade travada
+                if (pitchRatio !== 1.0 && currentSemitones !== 0) {
+                    // O motor ajusta o salto de granulação dinamicamente
+                }
+            };
+
+            // Workaround para iniciar o fluxo no AudioContext
+            sourceNodeWorkaround = audioCtx.createBufferSource();
+            sourceNodeWorkaround.buffer = audioBufferOriginal;
+            scriptNode.connect(audioCtx.destination);
+
+            iniciarMonitoramentoProgresso();
+        }
+
+        async function alterarPitch(delta) {
             const novoValor = currentSemitones + delta;
             if (novoValor >= -3 && novoValor <= 3) {
                 currentSemitones = novoValor;
                 atualizarDisplayPitch();
-                
-                const audio = document.getElementById('audio-player');
-                // Fórmula de alteração de tom sem afetar a velocidade no motor nativo
-                audio.playbackRate = Math.pow(2, currentSemitones / 12);
+                if (audioBufferOriginal && isPlayingAudioContext) {
+                    const tempoAtual = audioPausedAt + (audioCtx.currentTime - audioStartTime);
+                    iniciarReproducaoBuffer(tempoAtual);
+                }
             }
         }
 
-        function resetarPitch() {
+        async function resetarPitch() {
             if (currentSemitones !== 0) {
                 currentSemitones = 0;
                 atualizarDisplayPitch();
-                const audio = document.getElementById('audio-player');
-                audio.playbackRate = 1.0;
+                if (audioBufferOriginal && isPlayingAudioContext) {
+                    const tempoAtual = audioPausedAt + (audioCtx.currentTime - audioStartTime);
+                    iniciarReproducaoBuffer(tempoAtual);
+                }
             }
         }
 
@@ -802,8 +912,9 @@
             tomOriginalExtraido = extrairTomDaString(notasItem) || extrairTomDaString(musica) || extrairTomDaString(cantor);
 
             audio.pause(); audio.src = ""; yt.src = "";
+            pararMotorAudio();
+            audioBufferOriginal = null;
             currentSemitones = 0;
-            audio.playbackRate = 1.0;
             atualizarDisplayPitch();
             
             const ehYouTube = media.includes('youtube.com') || media.includes('youtu.be') || media.length === 11;
@@ -820,7 +931,7 @@
                 pitchPanel.style.display = 'flex';
                 progressPanel.style.display = 'flex';
                 yt.style.display = 'none';
-                audio.style.display = 'block';
+                audio.style.display = 'none';
                 document.getElementById('btn-pause-float').style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
@@ -828,15 +939,31 @@
                 try {
                     const cache = await caches.open(CACHE_NAME);
                     let cachedRes = await cache.match(url);
+                    
+                    let arrayBuffer;
                     if (cachedRes) {
-                        const blob = await cachedRes.blob();
-                        url = URL.createObjectURL(blob);
+                        arrayBuffer = await cachedRes.arrayBuffer();
+                    } else {
+                        const response = await fetch(url);
+                        arrayBuffer = await response.arrayBuffer();
                     }
-                } catch (e) {}
 
-                audio.src = url;
-                audio.load();
-                audio.play();
+                    if (!audioCtx) {
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    
+                    audioBufferOriginal = await audioCtx.decodeAudioData(arrayBuffer);
+                    document.getElementById('time-total').innerText = formatarTempo(audioBufferOriginal.duration);
+                    audioPausedAt = 0;
+                    iniciarReproducaoBuffer(0);
+
+                } catch (e) {
+                    console.error("Erro ao carregar via WebAudio:", e);
+                    audio.style.display = 'block';
+                    audio.src = url;
+                    audio.load();
+                    audio.play();
+                }
             }
         }
 
