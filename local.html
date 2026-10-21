@@ -6,6 +6,8 @@
     <title>Canto ETA - Roberto.</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- Engine SoundTouch para Pitch Shifting sem alterar velocidade -->
+    <script src="https://cdn.jsdelivr.net/npm/soundtouchjs@0.1.30/dist/soundtouch.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -225,7 +227,7 @@
             </div>
         </div>
 
-        <audio id="audio-player" controls></audio>
+        <audio id="audio-player"></audio>
         <iframe id="yt-player" allow="autoplay"></iframe>
     </div>
 
@@ -276,15 +278,16 @@
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
 
-        // Variáveis para o motor de Pitch Shifting em tempo real via Web Audio API e Grain-Overlap
+        // Variaveis de Áudio e SoundTouch
         let audioCtx = null;
-        let audioBufferOriginal = null;
-        let scriptNode = null;
-        let sourceNodeWorkaround = null;
-        let isPlayingAudioContext = false;
-        let audioStartTime = 0;
-        let audioPausedAt = 0;
-        let progressInterval = null;
+        let audioBuffer = null;
+        let soundtouchNode = null;
+        let stSource = null;
+        let stFilter = null;
+        let isPlayingST = false;
+        let stStartTime = 0;
+        let stPausedAt = 0;
+        let stInterval = null;
 
         const NOTAS_CROMATICAS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         const NOTAS_FLAT_MAP = { "Db":"C#", "Eb":"D#", "Gb":"F#", "Ab":"G#", "Bb":"A#" };
@@ -400,7 +403,7 @@
             const valDisplay = document.getElementById('pitch-val-display');
             const keyLabel = document.getElementById('pitch-key-label');
 
-            const txtSemitons = (currentSemitones > 0 ? `+${currentSemitones}` : currentSemitons) + " st";
+            const txtSemitons = (currentSemitones > 0 ? `+${currentSemitones}` : currentSemitones) + " st";
             if (valDisplay) valDisplay.innerText = txtSemitons;
 
             if (keyLabel) {
@@ -417,20 +420,28 @@
             }
         }
 
-        function pararMotorAudio() {
-            if (scriptNode) {
-                try { scriptNode.disconnect(); } catch(e){}
-                scriptNode = null;
+        function normalizarUrlMidia(media) {
+            if (!media) return '';
+            let url = media.trim();
+            if (url.includes('dropbox.com')) {
+                return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '').replace('&dl=0', '');
+            } else if (url.includes('drive.google.com') && url.includes('/d/')) {
+                const id = url.split('/d/')[1].split('/')[0];
+                return `https://docs.google.com/uc?export=download&id=${id}`;
             }
-            if (sourceNodeWorkaround) {
-                try { sourceNodeWorkaround.stop(); sourceNodeWorkaround.disconnect(); } catch(e){}
-                sourceNodeWorkaround = null;
+            return url;
+        }
+
+        function pararSoundTouch() {
+            if (soundtouchNode) {
+                try { soundtouchNode.disconnect(); } catch(e){}
+                soundtouchNode = null;
             }
-            if (progressInterval) {
-                clearInterval(progressInterval);
-                progressInterval = null;
+            if (stInterval) {
+                clearInterval(stInterval);
+                stInterval = null;
             }
-            isPlayingAudioContext = false;
+            isPlayingST = false;
         }
 
         function stopAll() {
@@ -442,9 +453,9 @@
             
             audio.pause(); audio.src = ""; yt.src = "";
             audio.style.display = 'none'; yt.style.display = 'none';
-            pararMotorAudio();
             
-            audioPausedAt = 0;
+            pararSoundTouch();
+            stPausedAt = 0;
             currentSemitones = 0;
             tomOriginalExtraido = null;
             atualizarDisplayPitch();
@@ -455,51 +466,105 @@
         }
 
         function pauseMedia() {
+            const audio = document.getElementById('audio-player');
             const btn = document.getElementById('btn-pause-float');
-            if (audioBufferOriginal) {
-                if (isPlayingAudioContext) {
-                    audioPausedAt += (audioCtx.currentTime - audioStartTime);
-                    pararMotorAudio();
+
+            if (audio.style.display !== 'none') {
+                if (audio.paused) { audio.play(); btn.innerText = "⏸ Pausar"; }
+                else { audio.pause(); btn.innerText = "▶ Play"; }
+                return;
+            }
+
+            if (audioBuffer) {
+                if (isPlayingST) {
+                    stPausedAt += (audioCtx.currentTime - stStartTime);
+                    pararSoundTouch();
                     btn.innerText = "▶ Play";
                 } else {
-                    iniciarReproducaoBuffer(audioPausedAt);
+                    tocarComPitchShift(stPausedAt);
                     btn.innerText = "⏸ Pausar";
                 }
             }
         }
 
         function restartMedia() {
-            if (audioBufferOriginal) {
-                pararMotorAudio();
-                audioPausedAt = 0;
-                iniciarReproducaoBuffer(0);
+            const audio = document.getElementById('audio-player');
+            if (audio.style.display !== 'none') {
+                audio.currentTime = 0; audio.play();
+                document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
+                return;
+            }
+
+            if (audioBuffer) {
+                pararSoundTouch();
+                stPausedAt = 0;
+                tocarComPitchShift(0);
                 document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
             }
         }
 
         function seekingAudio(valPorcentagem) {
-            if (audioBufferOriginal) {
-                const duracaoTotal = audioBufferOriginal.duration;
+            const audio = document.getElementById('audio-player');
+            if (audio.style.display !== 'none' && !isNaN(audio.duration)) {
+                audio.currentTime = (valPorcentagem / 100) * audio.duration;
+                return;
+            }
+
+            if (audioBuffer) {
+                const duracaoTotal = audioBuffer.duration;
                 const novoTempo = (valPorcentagem / 100) * duracaoTotal;
-                const estavaTocando = isPlayingAudioContext;
-                
-                pararMotorAudio();
-                audioPausedAt = novoTempo;
+                const estavaTocando = isPlayingST;
+
+                pararSoundTouch();
+                stPausedAt = novoTempo;
 
                 if (estavaTocando) {
-                    iniciarReproducaoBuffer(novoTempo);
+                    tocarComPitchShift(novoTempo);
                 } else {
                     document.getElementById('time-current').innerText = formatarTempo(novoTempo);
                 }
             }
         }
 
-        function iniciarMonitoramentoProgresso() {
-            if (progressInterval) clearInterval(progressInterval);
-            progressInterval = setInterval(() => {
-                if (isPlayingAudioContext && audioBufferOriginal) {
-                    const duracaoTotal = audioBufferOriginal.duration;
-                    const tempoAtual = audioPausedAt + (audioCtx.currentTime - audioStartTime);
+        // MOTOR SOUNDTOUCH: Pitch Shifting com Velocidade (Tempo) 100% Travada
+        async function tocarComPitchShift(offsetSeconds = 0) {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            pararSoundTouch();
+
+            // Configura o filtro SoundTouchJS
+            stSource = new soundtouch.WebAudioBufferSource(audioBuffer);
+            stFilter = new soundtouch.SimpleFilter(stSource, new soundtouch.SoundTouch(audioCtx.sampleRate));
+            
+            // Trava o ritmo em 1.0 (100% da velocidade) e aplica os semitons no tom
+            stFilter.pitchSemitones = currentSemitones;
+            stFilter.tempo = 1.0; 
+
+            // Posiciona o ponteiro de áudio
+            stSource.position = Math.floor(offsetSeconds * audioCtx.sampleRate);
+
+            // Node de saída
+            soundtouchNode = soundtouch.getWebAudioNode(audioCtx, stFilter);
+            soundtouchNode.connect(audioCtx.destination);
+
+            stStartTime = audioCtx.currentTime;
+            stPausedAt = offsetSeconds;
+            isPlayingST = true;
+
+            monitorarProgressoST();
+        }
+
+        function monitorarProgressoST() {
+            if (stInterval) clearInterval(stInterval);
+            stInterval = setInterval(() => {
+                if (isPlayingST && audioBuffer) {
+                    const duracaoTotal = audioBuffer.duration;
+                    const tempoAtual = stPausedAt + (audioCtx.currentTime - stStartTime);
 
                     if (tempoAtual <= duracaoTotal) {
                         const porcentagem = (tempoAtual / duracaoTotal) * 100;
@@ -507,8 +572,8 @@
                         document.getElementById('time-current').innerText = formatarTempo(tempoAtual);
                         document.getElementById('time-total').innerText = formatarTempo(duracaoTotal);
                     } else {
-                        pararMotorAudio();
-                        audioPausedAt = 0;
+                        pararSoundTouch();
+                        stPausedAt = 0;
                         document.getElementById('seek-bar').value = 0;
                         document.getElementById('time-current').innerText = formatarTempo(0);
                         document.getElementById('btn-pause-float').innerText = "▶ Play";
@@ -517,98 +582,27 @@
             }, 200);
         }
 
-        // MOTOR DE PITCH SHIFTING INDEPENDENTE DA VELOCIDADE (ALGORITMO OVERLAP-ADD NATIVO EM JS)
-        async function iniciarReproducaoBuffer(offsetSeconds = 0) {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                await audioCtx.resume();
-            }
-
-            pararMotorAudio();
-
-            audioStartTime = audioCtx.currentTime;
-            audioPausedAt = offsetSeconds;
-            isPlayingAudioContext = true;
-
-            const sampleRate = audioCtx.sampleRate;
-            const channelDataLeft = audioBufferOriginal.getChannelData(0);
-            const channelDataRight = audioBufferOriginal.numberOfChannels > 1 ? audioBufferOriginal.getChannelData(1) : channelDataLeft;
-
-            let cursor = Math.floor(offsetSeconds * sampleRate);
-            const pitchRatio = Math.pow(2, currentSemitones / 12); // Fator de transposição de tom puro
-
-            // Utiliza ScriptProcessorNode compatível com qualquer versão do Chrome para reamostragem síncrona sem alterar BPM
-            scriptNode = audioCtx.createScriptProcessor(4096, 0, 2);
-            
-            scriptNode.onaudioprocess = function (e) {
-                const outputL = e.outputBuffer.getChannelData(0);
-                const outputR = e.outputBuffer.getChannelData(1);
-                const bufferSize = outputL.length;
-
-                for (let i = 0; i < bufferSize; i++) {
-                    if (cursor >= channelDataLeft.length) {
-                        outputL[i] = 0;
-                        outputR[i] = 0;
-                        continue;
-                    }
-
-                    // Leitura fracionada baseada na taxa de pitch sem alterar o avanço do cursor de tempo
-                    const indexBase = Math.floor(cursor);
-                    const frac = cursor - indexBase;
-
-                    let sampleL = 0;
-                    let sampleR = 0;
-
-                    if (indexBase + 1 < channelDataLeft.length) {
-                        sampleL = channelDataLeft[indexBase] * (1 - frac) + channelDataLeft[indexBase + 1] * frac;
-                        sampleR = channelDataRight[indexBase] * (1 - frac) + channelDataRight[indexBase + 1] * frac;
-                    } else {
-                        sampleL = channelDataLeft[indexBase] || 0;
-                        sampleR = channelDataRight[indexBase] || 0;
-                    }
-
-                    outputL[i] = sampleL;
-                    outputR[i] = sampleR;
-
-                    // O cursor avança na velocidade normal (1.0), mas coletamos as amostras espaçadas pelo pitchRatio, gerando o efeito correto de tom sem alterar o tempo
-                    cursor += 1.0; 
-                }
-
-                // Ajuste compensatório interno para manter o pitch limpo e velocidade travada
-                if (pitchRatio !== 1.0 && currentSemitones !== 0) {
-                    // O motor ajusta o salto de granulação dinamicamente
-                }
-            };
-
-            // Workaround para iniciar o fluxo no AudioContext
-            sourceNodeWorkaround = audioCtx.createBufferSource();
-            sourceNodeWorkaround.buffer = audioBufferOriginal;
-            scriptNode.connect(audioCtx.destination);
-
-            iniciarMonitoramentoProgresso();
-        }
-
-        async function alterarPitch(delta) {
+        function alterarPitch(delta) {
             const novoValor = currentSemitones + delta;
             if (novoValor >= -3 && novoValor <= 3) {
                 currentSemitones = novoValor;
                 atualizarDisplayPitch();
-                if (audioBufferOriginal && isPlayingAudioContext) {
-                    const tempoAtual = audioPausedAt + (audioCtx.currentTime - audioStartTime);
-                    iniciarReproducaoBuffer(tempoAtual);
+                
+                if (stFilter) {
+                    stFilter.pitchSemitones = currentSemitones;
+                } else if (audioBuffer && isPlayingST) {
+                    const tempoAtual = stPausedAt + (audioCtx.currentTime - stStartTime);
+                    tocarComPitchShift(tempoAtual);
                 }
             }
         }
 
-        async function resetarPitch() {
+        function resetarPitch() {
             if (currentSemitones !== 0) {
                 currentSemitones = 0;
                 atualizarDisplayPitch();
-                if (audioBufferOriginal && isPlayingAudioContext) {
-                    const tempoAtual = audioPausedAt + (audioCtx.currentTime - audioStartTime);
-                    iniciarReproducaoBuffer(tempoAtual);
+                if (stFilter) {
+                    stFilter.pitchSemitones = 0;
                 }
             }
         }
@@ -680,17 +674,6 @@
                 alert("Houve um erro ao tentar comunicar com a planilha.");
                 elementoLi.style.opacity = "1";
             }
-        }
-
-        function normalizarUrlMidia(media) {
-            if (!media) return '';
-            let url = media;
-            if (url.includes('dropbox.com')) {
-                url = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '');
-            } else if (!url.includes('http') && url.length > 5 && !url.includes('youtu')) {
-                url = `https://docs.google.com/uc?export=open&id=${url}`;
-            }
-            return url;
         }
 
         async function toggleCache(url, btnElement) {
@@ -872,7 +855,7 @@
                     let botoesAcao = `
                         <div class="action-buttons">
                             ${temMidia && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
-                            ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media}', '${item.cantor.replace(/'/g, "\\'")}', '${item.musica.replace(/'/g, "\\'")}', this.closest('li'))">▶</button>` : ''}
+                            ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media.replace(/'/g, "\\'")}', '${item.cantor.replace(/'/g, "\\'")}', '${item.musica.replace(/'/g, "\\'")}', this.closest('li'))">▶</button>` : ''}
                             <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir da Planilha">🗑️</button>
                         </div>
                     `;
@@ -912,26 +895,24 @@
             tomOriginalExtraido = extrairTomDaString(notasItem) || extrairTomDaString(musica) || extrairTomDaString(cantor);
 
             audio.pause(); audio.src = ""; yt.src = "";
-            pararMotorAudio();
-            audioBufferOriginal = null;
+            audio.style.display = 'none'; yt.style.display = 'none';
+            pararSoundTouch();
+            audioBuffer = null;
             currentSemitones = 0;
             atualizarDisplayPitch();
             
-            const ehYouTube = media.includes('youtube.com') || media.includes('youtu.be') || media.length === 11;
+            const ehYouTube = media.includes('youtube.com') || media.includes('youtu.be') || (media.length === 11 && !media.includes('http'));
             
             if (ehYouTube) {
                 pitchPanel.style.display = 'none';
                 progressPanel.style.display = 'none';
                 yt.style.display = 'block';
-                audio.style.display = 'none';
                 document.getElementById('btn-pause-float').style.display = 'none';
                 let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
                 yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
             } else {
                 pitchPanel.style.display = 'flex';
                 progressPanel.style.display = 'flex';
-                yt.style.display = 'none';
-                audio.style.display = 'none';
                 document.getElementById('btn-pause-float').style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
@@ -944,7 +925,7 @@
                     if (cachedRes) {
                         arrayBuffer = await cachedRes.arrayBuffer();
                     } else {
-                        const response = await fetch(url);
+                        const response = await fetch(url, { mode: 'cors' });
                         arrayBuffer = await response.arrayBuffer();
                     }
 
@@ -952,17 +933,25 @@
                         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     }
                     
-                    audioBufferOriginal = await audioCtx.decodeAudioData(arrayBuffer);
-                    document.getElementById('time-total').innerText = formatarTempo(audioBufferOriginal.duration);
-                    audioPausedAt = 0;
-                    iniciarReproducaoBuffer(0);
+                    audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                    document.getElementById('time-total').innerText = formatarTempo(audioBuffer.duration);
+                    tocarComPitchShift(0);
 
                 } catch (e) {
-                    console.error("Erro ao carregar via WebAudio:", e);
+                    console.warn("Recorrendo ao player HTML5 nativo para esta mídia:", e);
+                    // Fallback para player nativo HTML5 caso haja bloqueio rígido de CORS no servidor remoto
                     audio.style.display = 'block';
                     audio.src = url;
                     audio.load();
                     audio.play();
+
+                    audio.ontimeupdate = () => {
+                        if (!isNaN(audio.duration)) {
+                            document.getElementById('seek-bar').value = (audio.currentTime / audio.duration) * 100;
+                            document.getElementById('time-current').innerText = formatarTempo(audio.currentTime);
+                            document.getElementById('time-total').innerText = formatarTempo(audio.duration);
+                        }
+                    };
                 }
             }
         }
