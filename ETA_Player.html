@@ -654,22 +654,39 @@
         }
 
 async function tocar(tipo, media, cantor, musica, elementoLi) {
-            await Tone.start();
+            try {
+                await Tone.start();
+            } catch(e) {}
 
             const yt = document.getElementById('yt-player');
             const pitchPanel = document.getElementById('pitch-control-panel');
             const progressPanel = document.getElementById('progress-panel');
             
-            document.getElementById('main-player-container').classList.remove('player-minimized');
-            document.getElementById('btn-toggle').innerText = '✕';
-            document.getElementById('now-playing').innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
-            document.getElementById('float-ctrl').style.display = 'flex';
-            document.getElementById('btn-pause-float').innerText = "⏸ Pausar";
+            const playerContainer = document.getElementById('main-player-container');
+            if (playerContainer) {
+                playerContainer.classList.remove('player-minimized');
+            }
+            
+            const btnToggle = document.getElementById('btn-toggle');
+            if (btnToggle) btnToggle.innerText = '✕';
+            
+            const nowPlaying = document.getElementById('now-playing');
+            if (nowPlaying) nowPlaying.innerHTML = `Tocando: <b>${musica}</b><br><small>${cantor}</small>`;
+            
+            const floatCtrl = document.getElementById('float-ctrl');
+            if (floatCtrl) floatCtrl.style.display = 'flex';
+            
+            const btnPauseFloat = document.getElementById('btn-pause-float');
+            if (btnPauseFloat) btnPauseFloat.innerText = "⏸ Pausar";
             
             const notasItem = elementoLi?.querySelector('.notes-field')?.innerText || "";
             tomOriginalExtraido = extrairTomDaString(notasItem) || extrairTomDaString(musica) || extrairTomDaString(cantor);
 
-            yt.src = ""; yt.style.display = 'none';
+            if (yt) {
+                yt.src = ""; 
+                yt.style.display = 'none';
+            }
+            
             pararTonePlayer();
             currentSemitones = 0;
             atualizarDisplayPitch();
@@ -677,16 +694,18 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
             const ehYouTube = media.includes('youtube.com') || media.includes('youtu.be') || (media.length === 11 && !media.includes('http'));
             
             if (ehYouTube) {
-                pitchPanel.style.display = 'none';
-                progressPanel.style.display = 'none';
-                yt.style.display = 'block';
-                document.getElementById('btn-pause-float').style.display = 'none';
-                let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
-                yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+                if (pitchPanel) pitchPanel.style.display = 'none';
+                if (progressPanel) progressPanel.style.display = 'none';
+                if (yt) {
+                    yt.style.display = 'block';
+                    let id = media.includes('v=') ? media.split('v=')[1].split('&')[0] : (media.includes('be/') ? media.split('be/')[1] : media);
+                    yt.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+                }
+                if (btnPauseFloat) btnPauseFloat.style.display = 'none';
             } else {
-                pitchPanel.style.display = 'flex';
-                progressPanel.style.display = 'flex';
-                document.getElementById('btn-pause-float').style.display = 'flex';
+                if (pitchPanel) pitchPanel.style.display = 'flex';
+                if (progressPanel) progressPanel.style.display = 'flex';
+                if (btnPauseFloat) btnPauseFloat.style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
 
@@ -696,31 +715,15 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
                     url: url,
                     autostart: true,
                     onload: () => {
-                        document.getElementById('time-total').innerText = formatarTempo(tonePlayer.buffer.duration);
+                        const timeTotal = document.getElementById('time-total');
+                        if (timeTotal && tonePlayer.buffer) {
+                            timeTotal.innerText = formatarTempo(tonePlayer.buffer.duration);
+                        }
                         iniciarMonitoramentoProgressoTone();
                     }
                 }).connect(tonePitchShift);
             }
         }
-        function iniciarMonitoramentoProgressoTone() {
-            if (progressInterval) clearInterval(progressInterval);
-            progressInterval = setInterval(() => {
-                if (tonePlayer && tonePlayer.loaded && tonePlayer.state === "started") {
-                    const duracaoTotal = tonePlayer.buffer.duration;
-                    const tempoAtual = tonePlayer.progress * duracaoTotal;
-                    
-                    document.getElementById('seek-bar').value = (tempoAtual / duracaoTotal) * 100;
-                    document.getElementById('time-current').innerText = formatarTempo(tempoAtual);
-                    document.getElementById('time-total').innerText = formatarTempo(duracaoTotal);
-
-                    if (tempoAtual >= duracaoTotal) {
-                        clearInterval(progressInterval);
-                        document.getElementById('btn-pause-float').innerText = "▶ Play";
-                    }
-                }
-            }, 200);
-        }
-
         window.addEventListener('DOMContentLoaded', carregar);
     </script>
 </body>
