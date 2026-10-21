@@ -6,7 +6,7 @@
     <title>Canto ETA - Roberto.</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="tone.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -257,14 +257,14 @@
         const urlParams = new URLSearchParams(window.location.search);
         let GID_ATUAL = urlParams.get('gid') || '1960210650';
         
-        const CACHE_NAME = 'canto-eta-media-v5';
+        const CACHE_NAME = 'canto-eta-media-v6';
         let modoGerenciamentoAtivo = false;
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
 
         let audioElementNativo = null;
-        let tonePlayer = null;
         let tonePitchShift = null;
+        let tonePlayerNode = null;
         let progressInterval = null;
 
         const NOTAS_CROMATICAS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -377,6 +377,8 @@
             } else if (url.includes('drive.google.com') && url.includes('/d/')) {
                 const id = url.split('/d/')[1].split('/')[0];
                 return `https://docs.google.com/uc?export=download&id=${id}`;
+            } else if (!url.includes('http://') && !url.includes('https://')) {
+                return window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1) + url;
             }
             return url;
         }
@@ -391,9 +393,9 @@
                 try { tonePitchShift.dispose(); } catch(e){}
                 tonePitchShift = null;
             }
-            if (tonePlayer) {
-                try { tonePlayer.disconnect(); } catch(e){}
-                tonePlayer = null;
+            if (tonePlayerNode) {
+                try { tonePlayerNode.disconnect(); } catch(e){}
+                tonePlayerNode = null;
             }
             if (progressInterval) {
                 clearInterval(progressInterval);
@@ -437,6 +439,8 @@
         }
 
         async function togglePlayPauseMaster() {
+            if (!audioElementNativo) return;
+
             try {
                 await Tone.start();
                 if (Tone.context.state !== 'running') {
@@ -444,16 +448,18 @@
                 }
             } catch(e) {}
 
-            if (!audioElementNativo) return;
-
             if (!audioElementNativo.paused) {
                 audioElementNativo.pause();
                 if (progressInterval) clearInterval(progressInterval);
                 atualizarBotoesPlayMaster("▶ Play");
             } else {
-                audioElementNativo.play();
-                atualizarBotoesPlayMaster("⏸ Pausar");
-                iniciarMonitoramentoProgressoNativo();
+                audioElementNativo.play().then(() => {
+                    atualizarBotoesPlayMaster("⏸ Pausar");
+                    iniciarMonitoramentoProgressoNativo();
+                }).catch(err => {
+                    console.error("Erro ao reproduzir áudio nativo:", err);
+                    alert("O navegador bloqueou a reprodução automática. Tente clicar novamente em Play.");
+                });
             }
         }
 
@@ -710,11 +716,7 @@
             atualizarStatusBotoesCache();
         }
 
-async function tocar(tipo, media, cantor, musica, elementoLi) {
-            try {
-                await Tone.start();
-            } catch(e) {}
-
+        async function tocar(tipo, media, cantor, musica, elementoLi) {
             const yt = document.getElementById('yt-player');
             const pitchPanel = document.getElementById('pitch-control-panel');
             const progressPanel = document.getElementById('progress-panel');
@@ -755,14 +757,13 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
                 if (progressPanel) progressPanel.style.display = 'flex';
                 
                 let url = normalizarUrlMidia(media);
-                console.log("URL final a ser carregada:", url); // <--- Isto vai mostrar a URL exata na consola (F12)
 
                 try {
                     audioElementNativo = new Audio();
                     audioElementNativo.crossOrigin = "anonymous";
                     audioElementNativo.src = url;
 
-                    audioElementNativo.onloadedmetadata = () => {
+                    audioElementNativo.onloadedmetadata = async () => {
                         const timeTotal = document.getElementById('time-total');
                         const timeCurrent = document.getElementById('time-current');
                         const seekBar = document.getElementById('seek-bar');
@@ -771,17 +772,25 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
                         if (timeCurrent) timeCurrent.innerText = "00:00";
                         if (seekBar) seekBar.value = 0;
 
-                        tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
-                        tonePlayer = Tone.context.createMediaElementSource(audioElementNativo);
-                        Tone.connect(tonePlayer, tonePitchShift);
+                        try {
+                            await Tone.start();
+                            if (Tone.context.state !== 'running') {
+                                await Tone.context.resume();
+                            }
+                            tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
+                            tonePlayerNode = Tone.context.createMediaElementSource(audioElementNativo);
+                            Tone.connect(tonePlayerNode, tonePitchShift);
+                        } catch(err) {
+                            console.error("Erro ao ligar ao Tone.js PitchShift:", err);
+                        }
 
                         if (nowPlaying) nowPlaying.innerHTML = `Pronto: <b>${musica}</b><br><small>${cantor} (Clique em Play)</small>`;
                         atualizarBotoesPlayMaster("▶ Play");
                     };
 
                     audioElementNativo.onerror = (e) => {
-                        console.error("Erro detalhado do elemento nativo:", e);
-                        alert(`Erro ao carregar o ficheiro. URL testada: ${url}`);
+                        console.error("Erro no carregamento do ficheiro:", e);
+                        alert(`Erro ao carregar o ficheiro de áudio. Verifique se o link está correto e acessível: \n${url}`);
                     };
 
                     audioElementNativo.load();
@@ -792,6 +801,7 @@ async function tocar(tipo, media, cantor, musica, elementoLi) {
                 }
             }
         }
+
         function iniciarMonitoramentoProgressoNativo() {
             if (progressInterval) clearInterval(progressInterval);
             progressInterval = setInterval(() => {
