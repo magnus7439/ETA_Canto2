@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA - Roberto.</title>
+    <title>Canto ETA - Roberto --</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <!-- Tone.js oficial via CDN do Cloudflare -->
@@ -258,7 +258,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         let GID_ATUAL = urlParams.get('gid') || '1960210650';
         
-        const CACHE_NAME = 'canto-eta-media-v7';
+        const CACHE_NAME = 'canto-eta-media-v9';
         let modoGerenciamentoAtivo = false;
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
@@ -374,7 +374,8 @@
             if (!media) return '';
             let url = media.trim();
             if (url.includes('dropbox.com')) {
-                return url.replace(/([?&])dl=[01]/, '$1raw=1').replace(/&st=[^&]*/, '');
+                // Força download direto de bytes sem passar por páginas intermediárias HTML
+                return url.replace(/([?&])dl=[01]/, '$1dl=1').replace(/([?&])raw=1/, '$1dl=1').replace(/&st=[^&]*/, '');
             } else if (url.includes('drive.google.com') && url.includes('/d/')) {
                 const id = url.split('/d/')[1].split('/')[0];
                 return `https://docs.google.com/uc?export=download&id=${id}`;
@@ -577,15 +578,17 @@
                     btnElement.classList.remove('cached');
                 } else {
                     btnElement.innerText = '⏳';
-                    const req = new Request(url, { mode: 'cors' });
-                    const res = await fetch(req);
-                    if (!res.ok) throw new Error('Falha');
-                    await cache.put(req, res);
+                    // Baixa sem restringir o modo CORS para permitir os redirecionamentos do Dropbox
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('Falha no download');
+                    await cache.put(url, res);
                     btnElement.innerText = '🗑️';
                     btnElement.classList.add('cached');
                 }
             } catch (error) {
+                console.error("Erro no cache:", error);
                 btnElement.innerText = '⬇️';
+                alert("Não foi possível guardar em cache. Verifique a ligação ao ficheiro.");
             }
         }
 
@@ -594,7 +597,7 @@
             const cache = await caches.open(CACHE_NAME);
             for (let btn of botoes) {
                 const url = btn.dataset.url;
-                if (await cache.match(url)) {
+                if (url && await cache.match(url)) {
                     btn.innerText = '🗑️';
                     btn.classList.add('cached');
                 }
@@ -604,14 +607,14 @@
         async function baixarMidiasDoDia() {
             const botoes = document.querySelectorAll('#playlist-sortable .btn-cache:not(.cached)');
             if (botoes.length === 0) return alert("Todas as mídias já estão baixadas!");
-            if (confirm(`Deseja baixar todas as ${botoes.length} mídias?`)) {
+            if (confirm(`Deseja baixar todas as ${botoes.length} mídias do dia?`)) {
                 const cache = await caches.open(CACHE_NAME);
                 for (let btn of botoes) {
                     const url = btn.dataset.url;
                     if (!url) continue;
                     btn.innerText = '⏳';
                     try {
-                        const res = await fetch(new Request(url, { mode: 'cors' }));
+                        const res = await fetch(url);
                         if (res.ok) { await cache.put(url, res); btn.innerText = '🗑️'; btn.classList.add('cached'); }
                         else { btn.innerText = '⬇️'; }
                     } catch(e) { btn.innerText = '⬇️'; }
@@ -622,8 +625,8 @@
 
         async function limparMidiasDoDia() {
             const botoes = document.querySelectorAll('#playlist-sortable .btn-cache.cached');
-            if (botoes.length === 0) return alert("Não há mídias baixadas.");
-            if (confirm("Deseja apagar as mídias da memória?")) {
+            if (botoes.length === 0) return alert("Não há mídias salvas em memória.");
+            if (confirm("Deseja apagar as mídias da memória local?")) {
                 const cache = await caches.open(CACHE_NAME);
                 for (let btn of botoes) {
                     await cache.delete(btn.dataset.url);
@@ -633,15 +636,19 @@
             }
         }
 
-        function carregar() {
+        async function carregar() {
             const lista = document.getElementById('playlist-sortable');
             if (lista) lista.innerHTML = '<p style="text-align:center;">Carregando...</p>';
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", `${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`, true);
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) renderizar(xhr.responseText);
-            };
-            xhr.send();
+            
+            try {
+                const resposta = await fetch(`${BASE_URL}&gid=${GID_ATUAL}&t=${new Date().getTime()}`);
+                if (!resposta.ok) throw new Error("Falha ao aceder à planilha");
+                const texto = await resposta.text();
+                renderizar(texto);
+            } catch (erro) {
+                console.error("Erro ao carregar dados da planilha:", erro);
+                if (lista) lista.innerHTML = '<p style="text-align:center; color: #ff6b6b;">Erro ao carregar a lista. Verifique a ligação.</p>';
+            }
         }
 
         function inlineSplitCSV(linha) { return linha.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); }
@@ -717,7 +724,9 @@
                 lista.appendChild(li);
             });
 
-            Sortable.create(lista, { handle: '.drag-handle', animation: 150, delayOnTouchOnly: true, onEnd: salvarEstadoLocal });
+            if (typeof Sortable !== 'undefined') {
+                Sortable.create(lista, { handle: '.drag-handle', animation: 150, delayOnTouchOnly: true, onEnd: salvarEstadoLocal });
+            }
             atualizarStatusBotoesCache();
         }
 
