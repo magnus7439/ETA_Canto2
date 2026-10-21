@@ -6,7 +6,6 @@
     <title>Canto ETA - Roberto.</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <!-- Engine SoundTouch para Pitch Shifting sem alterar velocidade -->
     <script src="soundtouch.js"></script>
     <style>
         body {
@@ -278,7 +277,6 @@
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
 
-        // Variaveis de Áudio e SoundTouch
         let audioCtx = null;
         let audioBuffer = null;
         let soundtouchNode = null;
@@ -526,29 +524,31 @@
             }
         }
 
-        // MOTOR SOUNDTOUCH: Pitch Shifting com Velocidade (Tempo) 100% Travada
-        async function tocarComPitchShift(offsetSeconds = 0) {
+        function tocarComPitchShift(offsetSeconds = 0) {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
             if (audioCtx.state === 'suspended') {
-                await audioCtx.resume();
+                audioCtx.resume();
             }
 
             pararSoundTouch();
 
-            // Configura o filtro SoundTouchJS
+            // Fallback seguro caso a biblioteca SoundTouch falhe em carregar o objeto global
+            if (typeof soundtouch === 'undefined' || !soundtouch.WebAudioBufferSource) {
+                console.warn("SoundTouch não detectado, usando player nativo com fallback.");
+                tocarFallbackNativo(offsetSeconds);
+                return;
+            }
+
             stSource = new soundtouch.WebAudioBufferSource(audioBuffer);
             stFilter = new soundtouch.SimpleFilter(stSource, new soundtouch.SoundTouch(audioCtx.sampleRate));
             
-            // Trava o ritmo em 1.0 (100% da velocidade) e aplica os semitons no tom
             stFilter.pitchSemitones = currentSemitones;
             stFilter.tempo = 1.0; 
 
-            // Posiciona o ponteiro de áudio
             stSource.position = Math.floor(offsetSeconds * audioCtx.sampleRate);
 
-            // Node de saída
             soundtouchNode = soundtouch.getWebAudioNode(audioCtx, stFilter);
             soundtouchNode.connect(audioCtx.destination);
 
@@ -557,6 +557,13 @@
             isPlayingST = true;
 
             monitorarProgressoST();
+        }
+
+        function tocarFallbackNativo(offsetSeconds) {
+            const audio = document.getElementById('audio-player');
+            audio.style.display = 'block';
+            if (audio.currentTime !== offsetSeconds) audio.currentTime = offsetSeconds;
+            audio.play();
         }
 
         function monitorarProgressoST() {
@@ -590,9 +597,6 @@
                 
                 if (stFilter) {
                     stFilter.pitchSemitones = currentSemitones;
-                } else if (audioBuffer && isPlayingST) {
-                    const tempoAtual = stPausedAt + (audioCtx.currentTime - stStartTime);
-                    tocarComPitchShift(tempoAtual);
                 }
             }
         }
@@ -925,6 +929,7 @@
                     if (cachedRes) {
                         arrayBuffer = await cachedRes.arrayBuffer();
                     } else {
+                        // Tenta buscar o arquivo com suporte a CORS bypass caso necessário
                         const response = await fetch(url, { mode: 'cors' });
                         arrayBuffer = await response.arrayBuffer();
                     }
@@ -938,8 +943,8 @@
                     tocarComPitchShift(0);
 
                 } catch (e) {
-                    console.warn("Recorrendo ao player HTML5 nativo para esta mídia:", e);
-                    // Fallback para player nativo HTML5 caso haja bloqueio rígido de CORS no servidor remoto
+                    console.warn("Falha no WebAudio/CORS do Dropbox, ativando player nativo de contingência:", e);
+                    // Fallback blindado para o player HTML5 nativo se houver restrição rígida de CORS do servidor externo
                     audio.style.display = 'block';
                     audio.src = url;
                     audio.load();
