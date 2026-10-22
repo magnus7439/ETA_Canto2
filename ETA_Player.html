@@ -549,22 +549,32 @@
             const diaSemana = getNomeDiaAtual();
             const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
             const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
-            const notesField = elementoLi.querySelector('.notes-field')?.innerText.trim() || '';
             
-            let infoConcatenada = `${musica} (${cantor})`;
-            if (elementoLi.classList.contains('is-study')) {
-                infoConcatenada = `${cantor} (${musica})`;
+            // Pega o link da mídia diretamente do botão de cache ou player associado ao item
+            const btnCache = elementoLi.querySelector('.btn-cache');
+            const btnPlay = elementoLi.querySelector('.btn-play');
+            let urlMidia = "";
+            
+            if (btnCache && btnCache.dataset.url) {
+                urlMidia = btnCache.dataset.url;
+            } else if (btnPlay) {
+                // Tenta extrair o atributo onclick do botão play se necessário
+                let onclickAttr = btnPlay.getAttribute('onclick') || "";
+                let matchUrl = onclickAttr.match(/'([^']+)'/g);
+                if (matchUrl && matchUrl.length > 1) {
+                    urlMidia = matchUrl[1].replace(/'/g, '');
+                }
             }
-            if (notesField !== "") infoConcatenada += ` - ${notesField}`;
 
-            if (!confirm(`Deseja realmente apagar "${musica}" da planilha de ${diaSemana} e também do GitHub?`)) return;
+            let infoConcatenada = `${musica} (${cantor})`;
+
+            if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
             
             try {
                 elementoLi.style.opacity = "0.3";
-                // Passamos o dia, o nome concatenado e especificamente o nome da música para ajudar o Apps Script a localizar
-                const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}&musica=${encodeURIComponent(musica)}`;
+                // Enviamos explicitamente o dia, o nome e a URL da mídia para exclusão cirúrgica
+                const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}&media=${encodeURIComponent(urlMidia)}`;
                 
-                // Removemos o 'no-cors' para permitir que o pedido chegue e execute totalmente no Apps Script
                 await fetch(urlCompleta, { method: 'GET' });
                 
                 elementoLi.remove();
