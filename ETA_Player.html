@@ -539,42 +539,40 @@
 
         // --- FUNÇÃO DE EXCLUSÃO COM PARÂMETROS SEPARADOS DE MÚSICA E CANTOR ---
 async function deletarItemPlanilha(elementoLi) {
-    const dia = getNomeDiaAtual();
-    const idItem = elementoLi.dataset.id;
-    const dadosItem = dadosGlobaisPlanilha[idItem] || {};
-    
-    const musica = dadosItem.musica || elementoLi.querySelector('.song-title')?.innerText.trim() || '';
-    const cantor = dadosItem.cantor || elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
-    const urlMedia = normalizarUrlMidia(dadosItem.media || elementoLi.dataset.media || '');
+    const dia = getNomeDiaAtual();
+    const idItem = elementoLi.dataset.id;
+    const dadosItem = dadosGlobaisPlanilha[idItem] || {};
+    
+    // Pega o nome da música e o cantor de forma limpa
+    const musica = dadosItem.musica || elementoLi.querySelector('.song-title')?.innerText.trim() || '';
+    const cantor = dadosItem.cantor || elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+    
+    // Monta o mesmo formato de string concatenada que a planilha usa para identificar o item: "Música (Intérprete)"
+    const nomeConcatenado = `${musica} (${cantor})`;
 
-    if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
+    if (!confirm(`Deseja realmente apagar "${musica}" da planilha?`)) return;
 
-    try {
-        elementoLi.style.opacity = "0.3";
+    try {
+        elementoLi.style.opacity = "0.3";
 
-        if (urlMedia) {
-            const cache = await caches.open(CACHE_NAME);
-            await cache.delete(urlMedia);
-        }
+        // Dispara o pedido GET para o Apps Script apagar a linha correspondente
+        const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(nomeConcatenado)}`;
+        
+        const resposta = await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
+        const textoResposta = await resposta.text();
 
-        // URL do Web App com os parâmetros
-        const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&media=${encodeURIComponent(urlMedia)}`;
-        
-        // Usamos mode: 'no-cors' para evitar o bloqueio de redirecionamento do Apps Script
-        await fetch(`${WEB_APP_URL}?${query}`, { 
-            method: 'GET',
-            mode: 'no-cors' 
-        });
+        if (textoResposta.includes("Erro")) {
+            throw new Error(textoResposta);
+        }
 
-        // Como o no-cors deixa a resposta opaca, removemos o elemento visualmente de imediato
-        elementoLi.remove();
-        salvarEstadoLocal();
-        alert("Item apagado com sucesso!");
-    } catch (error) {
-        console.error("Erro ao apagar:", error);
-        alert("Erro ao comunicar com o servidor: " + error.message);
-        elementoLi.style.opacity = "1";
-    }
+        elementoLi.remove();
+        salvarEstadoLocal();
+        alert("Item apagado com sucesso da planilha!");
+    } catch (error) {
+        console.error("Erro ao apagar:", error);
+        alert("Erro ao comunicar com o servidor: " + error.message);
+        elementoLi.style.opacity = "1";
+    }
 }
 
         async function toggleCache(url, btnElement) {
