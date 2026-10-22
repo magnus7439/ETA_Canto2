@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA - Roberto --</title>
+    <title>Canto ETA - Roberto #</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <!-- Tone.js oficial via CDN do Cloudflare -->
@@ -544,12 +544,12 @@
             }
         }
 
-        // --- FUNÇÃO DE EXCLUSÃO OTIMIZADA E LIMPA ---
+        // --- FUNÇÃO DE EXCLUSÃO CORRIGIDA COM DATASET ---
         async function deletarItemPlanilha(elementoLi) {
             const dia = getNomeDiaAtual();
             const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
             const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
-            const urlMedia = elementoLi.querySelector('.btn-cache')?.dataset.url || '';
+            const urlMedia = elementoLi.dataset.media || '';
 
             if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
 
@@ -691,6 +691,9 @@
                 li.className = 'glass-panel';
                 li.dataset.id = item.id;
                 
+                const urlFinal = normalizarUrlMidia(item.media);
+                li.dataset.media = urlFinal; // Garante que a URL fica guardada no elemento li para exclusão fiável
+
                 if (item.tipo === 'separador') {
                     li.classList.add('is-separator');
                     li.innerHTML = `<div class="separator-content"><div class="drag-handle">⋮⋮</div><div class="separator-title">${item.musica}</div></div>`;
@@ -700,7 +703,6 @@
                     const notaFinal = (salvoInfo.notas && salvoInfo.notas.trim() !== "") ? salvoInfo.notas : item.notes;
                     const temMidia = item.media && item.media.length > 5;
                     const ehYouTube = item.media && (item.media.includes('youtube.com') || item.media.includes('youtu.be') || item.media.length === 11);
-                    const urlFinal = normalizarUrlMidia(item.media);
 
                     let displayHTML = item.tipo === 'estudo' ? `<span class="interpreter">${item.musica}</span><span class="song-title">${item.cantor}</span>` : `<span class="interpreter">${item.cantor}</span><span class="song-title">${item.musica}</span>`;
 
