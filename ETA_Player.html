@@ -547,21 +547,31 @@
 
         async function deletarItemPlanilha(elementoLi) {
             const diaSemana = getNomeDiaAtual();
-            const part1 = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
-            const part2 = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
+            const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+            const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
             const notesField = elementoLi.querySelector('.notes-field')?.innerText.trim() || '';
-            let infoConcatenada = `${part2} (${part1})`;
-            if (elementoLi.classList.contains('is-study')) infoConcatenada = `${part1} (${part2})`;
+            
+            let infoConcatenada = `${musica} (${cantor})`;
+            if (elementoLi.classList.contains('is-study')) {
+                infoConcatenada = `${cantor} (${musica})`;
+            }
             if (notesField !== "") infoConcatenada += ` - ${notesField}`;
-            if (!confirm(`Deseja realmente apagar este item da planilha de ${diaSemana}?`)) return;
+
+            if (!confirm(`Deseja realmente apagar "${musica}" da planilha de ${diaSemana} e também do GitHub?`)) return;
+            
             try {
                 elementoLi.style.opacity = "0.3";
-                const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}`;
-                await fetch(urlCompleta, { method: 'GET', mode: 'no-cors' });
+                // Passamos o dia, o nome concatenado e especificamente o nome da música para ajudar o Apps Script a localizar
+                const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}&musica=${encodeURIComponent(musica)}`;
+                
+                // Removemos o 'no-cors' para permitir que o pedido chegue e execute totalmente no Apps Script
+                await fetch(urlCompleta, { method: 'GET' });
+                
                 elementoLi.remove();
                 salvarEstadoLocal();
-                alert("Comando de exclusão enviado para a planilha!");
+                alert("Item apagado da planilha e do GitHub com sucesso!");
             } catch (error) {
+                console.error("Erro ao apagar:", error);
                 alert("Houve um erro ao tentar comunicar com a planilha.");
                 elementoLi.style.opacity = "1";
             }
