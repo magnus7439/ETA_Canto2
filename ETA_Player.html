@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA - Roberto ~~ </title>
+    <title>Canto ETA - Roberto !!</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
@@ -261,7 +261,7 @@
         let modoGerenciamentoAtivo = false;
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
-        let dadosGlobaisPlanilha = {}; // Matriz global para garantir acesso seguro à URL da mídia
+        let dadosGlobaisPlanilha = {};
 
         let audioElementNativo = null;
         let tonePitchShift = null;
@@ -537,14 +537,14 @@
             }
         }
 
-        // --- FUNÇÃO DE EXCLUSÃO CORRIGIDA E ROBUSTA ---
+        // --- FUNÇÃO DE EXCLUSÃO COM PARÂMETROS SEPARADOS DE MÚSICA E CANTOR ---
         async function deletarItemPlanilha(elementoLi) {
             const dia = getNomeDiaAtual();
             const idItem = elementoLi.dataset.id;
             const dadosItem = dadosGlobaisPlanilha[idItem] || {};
             
-            const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
-            const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+            const musica = dadosItem.musica || elementoLi.querySelector('.song-title')?.innerText.trim() || '';
+            const cantor = dadosItem.cantor || elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
             const urlMedia = normalizarUrlMidia(dadosItem.media || elementoLi.dataset.media || '');
 
             if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
@@ -552,14 +552,13 @@
             try {
                 elementoLi.style.opacity = "0.3";
 
-                // 1. Limpa o cache local do navegador
                 if (urlMedia) {
                     const cache = await caches.open(CACHE_NAME);
                     await cache.delete(urlMedia);
                 }
 
-                // 2. Dispara o Apps Script passando todos os parâmetros necessários
-                const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(musica + ' (' + cantor + ')')}&media=${encodeURIComponent(urlMedia)}`;
+                // Envia explicitamente musica e cantor para correspondência exata no Apps Script
+                const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&media=${encodeURIComponent(urlMedia)}`;
                 
                 const resposta = await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
                 const textoResposta = await resposta.text();
@@ -570,7 +569,7 @@
 
                 elementoLi.remove();
                 salvarEstadoLocal();
-                alert("Item apagado com sucesso do GitHub e da planilha!");
+                alert("Item apagado com sucesso!");
             } catch (error) {
                 console.error("Erro ao apagar:", error);
                 alert("Erro ao comunicar com o servidor: " + error.message);
@@ -679,7 +678,7 @@
                     notes: cols[5]?.replace(/"/g, '') || ''
                 };
             });
-            dadosGlobaisPlanilha = dadosMap; // Popula a matriz global
+            dadosGlobaisPlanilha = dadosMap;
 
             const salva = safeGetLocal('ordem_' + GID_ATUAL);
             let idsOrdenados = Object.keys(dadosMap);
