@@ -543,20 +543,24 @@ async function deletarItemPlanilha(elementoLi) {
     const idItem = elementoLi.dataset.id;
     const dadosItem = dadosGlobaisPlanilha[idItem] || {};
     
-    // Pega o nome da música e o cantor de forma limpa
+    // Pega o nome da música, o cantor e a URL de mídia de forma segura
     const musica = dadosItem.musica || elementoLi.querySelector('.song-title')?.innerText.trim() || '';
     const cantor = dadosItem.cantor || elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
-    
-    // Monta o mesmo formato de string concatenada que a planilha usa para identificar o item: "Música (Intérprete)"
-    const nomeConcatenado = `${musica} (${cantor})`;
+    const urlMedia = normalizarUrlMidia(dadosItem.media || elementoLi.dataset.media || '');
 
-    if (!confirm(`Deseja realmente apagar "${musica}" da planilha?`)) return;
+    if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
 
     try {
         elementoLi.style.opacity = "0.3";
 
-        // Dispara o pedido GET para o Apps Script apagar a linha correspondente
-        const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(nomeConcatenado)}`;
+        // 1. Limpa o cache local do navegador se o ficheiro existir lá
+        if (urlMedia) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.delete(urlMedia);
+        }
+
+        // 2. Dispara o pedido GET para o Apps Script processar a exclusão (Planilha + GitHub)
+        const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&media=${encodeURIComponent(urlMedia)}`;
         
         const resposta = await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
         const textoResposta = await resposta.text();
@@ -567,7 +571,7 @@ async function deletarItemPlanilha(elementoLi) {
 
         elementoLi.remove();
         salvarEstadoLocal();
-        alert("Item apagado com sucesso da planilha!");
+        alert("Item apagado com sucesso do GitHub e da planilha!");
     } catch (error) {
         console.error("Erro ao apagar:", error);
         alert("Erro ao comunicar com o servidor: " + error.message);
