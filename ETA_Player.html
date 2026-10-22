@@ -545,44 +545,26 @@
             }
         }
 
-        async function deletarItemPlanilha(elementoLi) {
-            const diaSemana = getNomeDiaAtual();
-            const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+        async function de_letarItemPlanilha(elementoLi) {
+            const dia = getNomeDiaAtual();
             const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
-            
-            // Pega o link da mídia diretamente do botão de cache ou player associado ao item
-            const btnCache = elementoLi.querySelector('.btn-cache');
-            const btnPlay = elementoLi.querySelector('.btn-play');
-            let urlMidia = "";
-            
-            if (btnCache && btnCache.dataset.url) {
-                urlMidia = btnCache.dataset.url;
-            } else if (btnPlay) {
-                // Tenta extrair o atributo onclick do botão play se necessário
-                let onclickAttr = btnPlay.getAttribute('onclick') || "";
-                let matchUrl = onclickAttr.match(/'([^']+)'/g);
-                if (matchUrl && matchUrl.length > 1) {
-                    urlMidia = matchUrl[1].replace(/'/g, '');
-                }
-            }
-
-            let infoConcatenada = `${musica} (${cantor})`;
+            const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+            const urlMedia = elementoLi.querySelector('.btn-cache')?.dataset.url || '';
 
             if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
-            
+
             try {
                 elementoLi.style.opacity = "0.3";
-                // Enviamos explicitamente o dia, o nome e a URL da mídia para exclusão cirúrgica
-                const urlCompleta = `${WEB_APP_URL}?acao=apagarItem&dia=${encodeURIComponent(diaSemana)}&nome=${encodeURIComponent(infoConcatenada)}&media=${encodeURIComponent(urlMidia)}`;
+                const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(musica + ' (' + cantor + ')')}&media=${encodeURIComponent(urlMedia)}`;
                 
-                await fetch(urlCompleta, { method: 'GET' });
-                
+                await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
+
                 elementoLi.remove();
                 salvarEstadoLocal();
-                alert("Item apagado da planilha e do GitHub com sucesso!");
+                alert("Item apagado com sucesso!");
             } catch (error) {
                 console.error("Erro ao apagar:", error);
-                alert("Houve um erro ao tentar comunicar com a planilha.");
+                alert("Erro ao comunicar com o servidor.");
                 elementoLi.style.opacity = "1";
             }
         }
