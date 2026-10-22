@@ -374,7 +374,6 @@
             if (!media) return '';
             let url = media.trim();
             if (url.includes('dropbox.com')) {
-                // Força download direto de bytes sem passar por páginas intermediárias HTML
                 return url.replace(/([?&])dl=[01]/, '$1dl=1').replace(/([?&])raw=1/, '$1dl=1').replace(/&st=[^&]*/, '');
             } else if (url.includes('drive.google.com') && url.includes('/d/')) {
                 const id = url.split('/d/')[1].split('/')[0];
@@ -545,7 +544,8 @@
             }
         }
 
-        async function de_letarItemPlanilha(elementoLi) {
+        // --- FUNÇÃO DE EXCLUSÃO OTIMIZADA E LIMPA ---
+        async function deletarItemPlanilha(elementoLi) {
             const dia = getNomeDiaAtual();
             const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
             const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
@@ -580,7 +580,6 @@
                     btnElement.classList.remove('cached');
                 } else {
                     btnElement.innerText = '⏳';
-                    // Baixa sem restringir o modo CORS para permitir os redirecionamentos do Dropbox
                     const res = await fetch(url);
                     if (!res.ok) throw new Error('Falha no download');
                     await cache.put(url, res);
@@ -590,7 +589,7 @@
             } catch (error) {
                 console.error("Erro no cache:", error);
                 btnElement.innerText = '⬇️';
-                alert("Não foi possível guardar em cache. Verifique a ligação ao ficheiro.");
+                alert("Não foi possível guardar em cache.");
             }
         }
 
@@ -649,7 +648,7 @@
                 renderizar(texto);
             } catch (erro) {
                 console.error("Erro ao carregar dados da planilha:", erro);
-                if (lista) lista.innerHTML = '<p style="text-align:center; color: #ff6b6b;">Erro ao carregar a lista. Verifique a ligação.</p>';
+                if (lista) lista.innerHTML = '<p style="text-align:center; color: #ff6b6b;">Erro ao carregar a lista.</p>';
             }
         }
 
@@ -777,11 +776,7 @@
 
                 try {
                     audioElementNativo = new Audio();
-                    
-                    if (!ehDropbox) {
-                        audioElementNativo.crossOrigin = "anonymous";
-                    }
-
+                    if (!ehDropbox) { audioElementNativo.crossOrigin = "anonymous"; }
                     audioElementNativo.src = url;
 
                     audioElementNativo.onloadedmetadata = async () => {
@@ -796,9 +791,7 @@
                         if (!ehDropbox) {
                             try {
                                 await Tone.start();
-                                if (Tone.context.state !== 'running') {
-                                    await Tone.context.resume();
-                                }
+                                if (Tone.context.state !== 'running') { await Tone.context.resume(); }
                                 tonePitchShift = new Tone.PitchShift({ pitch: currentSemitones }).toDestination();
                                 tonePlayerNode = Tone.context.createMediaElementSource(audioElementNativo);
                                 Tone.connect(tonePlayerNode, tonePitchShift);
@@ -813,11 +806,10 @@
 
                     audioElementNativo.onerror = (e) => {
                         console.error("Erro no carregamento do ficheiro:", e);
-                        alert(`Erro ao carregar o ficheiro de áudio. Verifique se o link está correto:\n${url}`);
+                        alert(`Erro ao carregar o ficheiro de áudio:\n${url}`);
                     };
 
                     audioElementNativo.load();
-
                 } catch (err) {
                     console.error("Erro:", err);
                     alert("Erro ao iniciar o motor de áudio.");
