@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA - Roberto #</title>
+    <title>Canto ETA - Roberto</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <!-- Tone.js oficial via CDN do Cloudflare -->
@@ -544,43 +544,45 @@
             }
         }
 
-        // --- FUNÇÃO DE EXCLUSÃO CORRIGIDA COM DATASET ---
-async function deletarItemPlanilha(elementoLi) {
-    const dia = getNomeDiaAtual();
-    const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
-    const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
-    const urlMedia = elementoLi.dataset.media || '';
+        // --- FUNÇÃO DE EXCLUSÃO CORRIGIDA COM PARÂMETRO DIRETO ---
+        async function deletarItemPlanilha(elementoLi, urlMediaParam) {
+            const dia = getNomeDiaAtual();
+            const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
+            const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+            
+            // Usa o parâmetro direto passado no clique ou recorre ao dataset como garantia
+            const urlMedia = urlMediaParam || elementoLi.dataset.media || '';
 
-    if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
+            if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
 
-    try {
-        elementoLi.style.opacity = "0.3";
+            try {
+                elementoLi.style.opacity = "0.3";
 
-        // 1. Deleta do cache do navegador (se existir)
-        if (urlMedia) {
-            const cache = await caches.open(CACHE_NAME);
-            await cache.delete(urlMedia);
+                // 1. Deleta do cache do navegador (se existir)
+                if (urlMedia) {
+                    const cache = await caches.open(CACHE_NAME);
+                    await cache.delete(urlMedia);
+                }
+
+                // 2, 3 e 4. Dispara a rota única do Apps Script passando explicitamente a URL da mídia
+                const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(musica + ' (' + cantor + ')')}&media=${encodeURIComponent(urlMedia)}`;
+                
+                const resposta = await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
+                const textoResposta = await resposta.text();
+
+                if (textoResposta.includes("Erro")) {
+                    throw new Error(textoResposta);
+                }
+
+                elementoLi.remove();
+                salvarEstadoLocal();
+                alert("Item apagado com sucesso do GitHub, da planilha e do cache!");
+            } catch (error) {
+                console.error("Erro ao apagar:", error);
+                alert("Erro ao comunicar com o servidor: " + error.message);
+                elementoLi.style.opacity = "1";
+            }
         }
-
-        // 2, 3 e 4. Dispara a rota única do Apps Script que vai buscar o token interno, apaga do GitHub e limpa a planilha
-        const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(musica + ' (' + cantor + ')')}&media=${encodeURIComponent(urlMedia)}`;
-        
-        const resposta = await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
-        const textoResposta = await resposta.text();
-
-        if (textoResposta.includes("Erro")) {
-            throw new Error(textoResposta);
-        }
-
-        elementoLi.remove();
-        salvarEstadoLocal();
-        alert("Item apagado com sucesso do GitHub, da planilha e do cache!");
-    } catch (error) {
-        console.error("Erro ao apagar:", error);
-        alert("Erro ao comunicar com o servidor: " + error.message);
-        elementoLi.style.opacity = "1";
-    }
-}
 
         async function toggleCache(url, btnElement) {
             if (!url) return;
@@ -705,7 +707,7 @@ async function deletarItemPlanilha(elementoLi) {
                 li.dataset.id = item.id;
                 
                 const urlFinal = normalizarUrlMidia(item.media);
-                li.dataset.media = urlFinal; // Garante que a URL fica guardada no elemento li para exclusão fiável
+                li.dataset.media = urlFinal;
 
                 if (item.tipo === 'separador') {
                     li.classList.add('is-separator');
@@ -723,7 +725,7 @@ async function deletarItemPlanilha(elementoLi) {
                         <div class="action-buttons">
                             ${temMidia && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
                             ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media.replace(/'/g, "\\'")}', '${item.cantor.replace(/'/g, "\\'")}', '${item.musica.replace(/'/g, "\\'")}', this.closest('li'))">▶</button>` : ''}
-                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir">🗑️</button>
+                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'), '${urlFinal}')" title="Excluir">🗑️</button>
                         </div>
                     `;
 
