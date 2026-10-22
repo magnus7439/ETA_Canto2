@@ -545,29 +545,42 @@
         }
 
         // --- FUNÇÃO DE EXCLUSÃO CORRIGIDA COM DATASET ---
-        async function deletarItemPlanilha(elementoLi) {
-            const dia = getNomeDiaAtual();
-            const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
-            const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
-            const urlMedia = elementoLi.dataset.media || '';
+async function deletarItemPlanilha(elementoLi) {
+    const dia = getNomeDiaAtual();
+    const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
+    const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+    const urlMedia = elementoLi.dataset.media || '';
 
-            if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
+    if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
 
-            try {
-                elementoLi.style.opacity = "0.3";
-                const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(musica + ' (' + cantor + ')')}&media=${encodeURIComponent(urlMedia)}`;
-                
-                await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
+    try {
+        elementoLi.style.opacity = "0.3";
 
-                elementoLi.remove();
-                salvarEstadoLocal();
-                alert("Item apagado com sucesso!");
-            } catch (error) {
-                console.error("Erro ao apagar:", error);
-                alert("Erro ao comunicar com o servidor.");
-                elementoLi.style.opacity = "1";
-            }
+        // 1. Deleta do cache do navegador (se existir)
+        if (urlMedia) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.delete(urlMedia);
         }
+
+        // 2, 3 e 4. Dispara a rota única do Apps Script que vai buscar o token interno, apaga do GitHub e limpa a planilha
+        const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(musica + ' (' + cantor + ')')}&media=${encodeURIComponent(urlMedia)}`;
+        
+        const resposta = await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
+        const textoResposta = await resposta.text();
+
+        if (textoResposta.includes("Erro")) {
+            throw new Error(textoResposta);
+        }
+
+        elementoLi.remove();
+        salvarEstadoLocal();
+        alert("Item apagado com sucesso do GitHub, da planilha e do cache!");
+    } catch (error) {
+        console.error("Erro ao apagar:", error);
+        alert("Erro ao comunicar com o servidor: " + error.message);
+        elementoLi.style.opacity = "1";
+    }
+}
 
         async function toggleCache(url, btnElement) {
             if (!url) return;
