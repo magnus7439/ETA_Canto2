@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA - Roberto</title>
+    <title>Canto ETA - Roberto ~~ </title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <!-- Tone.js oficial via CDN do Cloudflare -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         body {
@@ -262,6 +261,7 @@
         let modoGerenciamentoAtivo = false;
         let currentSemitones = 0;
         let tomOriginalExtraido = null;
+        let dadosGlobaisPlanilha = {}; // Matriz global para garantir acesso seguro à URL da mídia
 
         let audioElementNativo = null;
         let tonePitchShift = null;
@@ -417,9 +417,7 @@
             if (progressPanel) progressPanel.style.display = 'flex';
 
             if (yt) { yt.src = ""; yt.style.display = 'none'; }
-            
             pararTonePlayer();
-            
             currentSemitones = 0;
             tomOriginalExtraido = null;
             atualizarDisplayPitch();
@@ -445,12 +443,9 @@
 
         async function togglePlayPauseMaster() {
             if (!audioElementNativo) return;
-
             try {
                 await Tone.start();
-                if (Tone.context.state !== 'running') {
-                    await Tone.context.resume();
-                }
+                if (Tone.context.state !== 'running') { await Tone.context.resume(); }
             } catch(e) {}
 
             if (!audioElementNativo.paused) {
@@ -462,8 +457,8 @@
                     atualizarBotoesPlayMaster("⏸ Pausar");
                     iniciarMonitoramentoProgressoNativo();
                 }).catch(err => {
-                    console.error("Erro ao reproduzir áudio nativo:", err);
-                    alert("O navegador bloqueou a reprodução automática. Tente clicar novamente em Play.");
+                    console.error("Erro ao reproduzir:", err);
+                    alert("O navegador bloqueou a reprodução automática. Clique novamente em Play.");
                 });
             }
         }
@@ -490,9 +485,7 @@
             if (novoValor >= -3 && novoValor <= 3) {
                 currentSemitones = novoValor;
                 atualizarDisplayPitch();
-                if (tonePitchShift) {
-                    tonePitchShift.pitch = currentSemitones;
-                }
+                if (tonePitchShift) tonePitchShift.pitch = currentSemitones;
             }
         }
 
@@ -544,48 +537,46 @@
             }
         }
 
-        // --- FUNÇÃO DE EXCLUSÃO CORRIGIDA COM PARÂMETRO DIRETO ---
-    async function deletarItemPlanilha(elementoLi) {
-        const dia = getNomeDiaAtual();
-        const idItem = elementoLi.dataset.id;
-        const dadosItem = dadosGlobaisPlanilha[idItem] || {};
-    
-        const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
-        const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
-    
-        // Pega a URL limpa diretamente da fonte dos dados da planilha
-        const urlMedia = normalizarUrlMidia(dadosItem.media || elementoLi.dataset.media || '');
+        // --- FUNÇÃO DE EXCLUSÃO CORRIGIDA E ROBUSTA ---
+        async function deletarItemPlanilha(elementoLi) {
+            const dia = getNomeDiaAtual();
+            const idItem = elementoLi.dataset.id;
+            const dadosItem = dadosGlobaisPlanilha[idItem] || {};
+            
+            const musica = elementoLi.querySelector('.song-title')?.innerText.trim() || '';
+            const cantor = elementoLi.querySelector('.interpreter')?.innerText.trim() || '';
+            const urlMedia = normalizarUrlMidia(dadosItem.media || elementoLi.dataset.media || '');
 
-        if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
+            if (!confirm(`Deseja realmente apagar "${musica}" da planilha e do GitHub?`)) return;
 
-        try {
-        elementoLi.style.opacity = "0.3";
+            try {
+                elementoLi.style.opacity = "0.3";
 
-        // 1. Limpa o cache local do navegador se existir
-        if (urlMedia) {
-            const cache = await caches.open(CACHE_NAME);
-            await cache.delete(urlMedia);
-    }
+                // 1. Limpa o cache local do navegador
+                if (urlMedia) {
+                    const cache = await caches.open(CACHE_NAME);
+                    await cache.delete(urlMedia);
+                }
 
-        // 2. Dispara o Apps Script com todos os parâmetros garantidos
-        const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(musica + ' (' + cantor + ')')}&media=${encodeURIComponent(urlMedia)}`;
-        
-        const resposta = await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
-        const textoResposta = await resposta.text();
+                // 2. Dispara o Apps Script passando todos os parâmetros necessários
+                const query = `acao=apagarItem&dia=${encodeURIComponent(dia)}&nome=${encodeURIComponent(musica + ' (' + cantor + ')')}&media=${encodeURIComponent(urlMedia)}`;
+                
+                const resposta = await fetch(`${WEB_APP_URL}?${query}`, { method: 'GET' });
+                const textoResposta = await resposta.text();
 
-        if (textoResposta.includes("Erro")) {
-            throw new Error(textoResposta);
+                if (textoResposta.includes("Erro")) {
+                    throw new Error(textoResposta);
+                }
+
+                elementoLi.remove();
+                salvarEstadoLocal();
+                alert("Item apagado com sucesso do GitHub e da planilha!");
+            } catch (error) {
+                console.error("Erro ao apagar:", error);
+                alert("Erro ao comunicar com o servidor: " + error.message);
+                elementoLi.style.opacity = "1";
+            }
         }
-
-        elementoLi.remove();
-        salvarEstadoLocal();
-        alert("Item apagado com sucesso do GitHub e da planilha!");
-    } catch (error) {
-        console.error("Erro ao apagar:", error);
-        alert("Erro ao comunicar com o servidor: " + error.message);
-        elementoLi.style.opacity = "1";
-    }
-}
 
         async function toggleCache(url, btnElement) {
             if (!url) return;
@@ -665,7 +656,7 @@
                 const texto = await resposta.text();
                 renderizar(texto);
             } catch (erro) {
-                console.error("Erro ao carregar dados da planilha:", erro);
+                console.error("Erro ao carregar dados:", erro);
                 if (lista) lista.innerHTML = '<p style="text-align:center; color: #ff6b6b;">Erro ao carregar a lista.</p>';
             }
         }
@@ -688,8 +679,8 @@
                     notes: cols[5]?.replace(/"/g, '') || ''
                 };
             });
-            dadosGlobaisPlanilha = dadosMap;
-            
+            dadosGlobaisPlanilha = dadosMap; // Popula a matriz global
+
             const salva = safeGetLocal('ordem_' + GID_ATUAL);
             let idsOrdenados = Object.keys(dadosMap);
             let estadosCheck = {};
@@ -729,7 +720,7 @@
                         <div class="action-buttons">
                             ${temMidia && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
                             ${temMidia ? `<button class="btn-play" onclick="tocar('${item.tipo}', '${item.media.replace(/'/g, "\\'")}', '${item.cantor.replace(/'/g, "\\'")}', '${item.musica.replace(/'/g, "\\'")}', this.closest('li'))">▶</button>` : ''}
-                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'), '${urlFinal}')" title="Excluir">🗑️</button>
+                            <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir">🗑️</button>
                         </div>
                     `;
 
@@ -817,7 +808,7 @@
                                 tonePlayerNode = Tone.context.createMediaElementSource(audioElementNativo);
                                 Tone.connect(tonePlayerNode, tonePitchShift);
                             } catch(err) {
-                                console.error("Erro ao ligar ao Tone.js PitchShift:", err);
+                                console.error("Erro ao ligar ao Tone.js:", err);
                             }
                         }
 
@@ -826,7 +817,7 @@
                     };
 
                     audioElementNativo.onerror = (e) => {
-                        console.error("Erro no carregamento do ficheiro:", e);
+                        console.error("Erro no carregamento:", e);
                         alert(`Erro ao carregar o ficheiro de áudio:\n${url}`);
                     };
 
