@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Canto ETA 🎤 Apresentação & Encerramento</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: rgba(20, 20, 20, 0.9);
+            --accent-color: #ff9800;
+            --part1-color: #2196f3;
+            --loop-color: #4caf50;
+            --ending-color: #f44336;
+            --text-color: #ffffff;
+            --subtext-color: #b0b0b0;
+            --success-color: #4caf50;
+            --btn-off: #424242;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-image: url('image_6.png');
+            background-size: cover; background-position: center;
+            background-repeat: no-repeat; background-attachment: fixed;
+            color: var(--text-color);
+            margin: 0; padding: 20px;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%; max-width: 480px;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            padding: 20px; border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+            display: flex; flex-direction: column; gap: 14px;
+        }
+
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;
+        }
+        .header h2 { margin: 0; font-size: 1.1rem; color: #ff4; }
+
+        .btn-back {
+            background: rgba(255,255,255,0.15); color: #fff; border: none;
+            padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: bold;
+        }
+
+        .nav-tabs {
+            display: flex; background: rgba(0,0,0,0.4);
+            border-radius: 10px; padding: 4px; gap: 4px; border: 1px solid rgba(255,255,255,0.08);
+        }
+        .tab-btn {
+            flex: 1; padding: 8px 4px; font-size: 0.8rem; font-weight: bold;
+            background: transparent; color: var(--subtext-color); border: none;
+            border-radius: 8px; cursor: pointer; text-align: center; text-transform: uppercase;
+        }
+        .tab-btn.active { background: var(--accent-color); color: #000; }
+
+        .tab-content { display: none; flex-direction: column; gap: 12px; }
+        .tab-content.active { display: flex; }
+
+        .song-title-box { text-align: center; margin-top: 5px; }
+        .song-title-box h3 { margin: 0 0 4px 0; font-size: 1.15em; color: #fff; }
+        .song-title-box small { color: #ff4; font-size: 0.9em; text-transform: uppercase; }
+
+        .timer-box {
+            text-align: center; background: rgba(0,0,0,0.4);
+            padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column; gap: 8px;
+        }
+
+        .timer-inner { display: flex; justify-content: center; align-items: center; gap: 15px; }
+        .timer-display { font-size: 1.8rem; font-weight: bold; font-family: monospace; color: #fff; }
+        .status-display { font-size: 1rem; font-weight: bold; font-family: monospace; color: var(--accent-color); background: rgba(255,152,0,0.15); padding: 4px 12px; border-radius: 6px; text-transform: uppercase; }
+
+        .progress-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: var(--accent-color); transition: width 0.05s linear; }
+
+        .player-controls { display: grid; grid-template-columns: 1fr; gap: 8px; }
+
+        button {
+            padding: 14px; font-size: 1rem; font-weight: bold;
+            border: none; border-radius: 10px; cursor: pointer; text-transform: uppercase; transition: 0.2s;
+        }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-play { background: #4caf50; color: #fff; }
+        .btn-climax { background: var(--ending-color); color: #fff; display: none; }
+        .btn-climax.armed { animation: pulse 0.8s infinite alternate; background: #ff5252 !important; }
+        .btn-stop { background: rgba(220, 20, 20, 0.85); color: #fff; }
+
+        @keyframes pulse {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0.75; transform: scale(0.98); }
+        }
+
+        .toast { font-size: 0.8rem; text-align: center; color: #ff4; min-height: 18px; font-style: italic; }
+
+        .pedal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .pedal-card {
+            background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 6px;
+        }
+        .pedal-title { font-size: 0.8rem; font-weight: bold; color: var(--accent-color); display: flex; justify-content: space-between; }
+        .pedal-key-badge { font-size: 0.65rem; background: #333; padding: 2px 4px; border-radius: 4px; color: var(--subtext-color); }
+        
+        select {
+            width: 100%; padding: 8px; font-size: 0.8rem;
+            background: #2a2a2a; color: var(--text-color);
+            border: 1px solid #444; border-radius: 8px; outline: none; cursor: pointer;
+        }
+        .test-box {
+            background: rgba(0,0,0,0.4); border: 2px dashed rgba(255,255,255,0.2); padding: 10px;
+            border-radius: 8px; text-align: center; font-size: 0.8rem; color: var(--subtext-color);
+        }
+        .test-box.active { border-color: var(--success-color); color: var(--success-color); font-weight: bold; background: rgba(76, 175, 80, 0.1); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>🎤 Apresentação ETA</h2>
+        <button class="btn-back" onclick="window.location.href='ETA_Player2.html'">⬅ Voltar</button>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('playerTab')">🎛️ Player Show</button>
+        <button class="tab-btn" onclick="switchTab('pedalTab')">🦿 Pedal MIDI</button>
+    </div>
+
+    <!-- TELA 1: PLAYER -->
+    <div id="playerTab" class="tab-content active">
+        <div class="song-title-box">
+            <h3 id="songTitle">Carregando...</h3>
+            <small id="songInterpreter">--</small>
+        </div>
+
+        <div class="timer-box">
+            <div class="timer-inner">
+                <span id="timerDisplay" class="timer-display">00:00.0</span>
+                <span id="statusDisplay" class="status-display">Pronto</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div id="progressBarFill" class="progress-bar-fill"></div>
+            </div>
+        </div>
+
+        <div class="player-controls">
+            <button id="btnPlay" class="btn-play" disabled>▶ INICIAR APRESENTAÇÃO</button>
+            <button id="btnClimax" class="btn-climax">🔥 DISPARAR REFRÃO FINAL (CLÍMAX)</button>
+            <button id="btnStop" class="btn-stop">■ PARAR / RESETAR</button>
+        </div>
+
+        <div id="toastMessage" class="toast">Aguardando carregamento dos áudios...</div>
+    </div>
+
+    <!-- TELA 2: PEDAL -->
+    <div id="pedalTab" class="tab-content">
+        <div style="font-size: 0.8rem; color: var(--subtext-color); text-align: center;">
+            Mapeamento do <b>M-Vave Chocolate Plus</b> (Modo Keyboard):
+        </div>
+
+        <div class="pedal-grid">
+            <div class="pedal-card">
+                <div class="pedal-title"><span>PEDAL A</span><span class="pedal-key-badge">PageUp</span></div>
+                <select id="actionPedalA" onchange="savePedalConfig()">
+                    <option value="stop">⏹ Parar / Resetar</option>
+                    <option value="play">▶ Iniciar Apresentação</option>
+                    <option value="climax">🔥 Clímax / Refrão Final</option>
+                </select>
+            </div>
+
+            <div class="pedal-card">
+                <div class="pedal-title"><span>PEDAL B</span><span class="pedal-key-badge">PageDown</span></div>
+                <select id="actionPedalB" onchange="savePedalConfig()">
+                    <option value="climax">🔥 Clímax / Refrão Final</option>
+                    <option value="play">▶ Iniciar Apresentação</option>
+                    <option value="stop">⏹ Parar / Resetar</option>
+                </select>
+            </div>
+
+            <div class="pedal-card">
+                <div class="pedal-title"><span>PEDAL C</span><span class="pedal-key-badge">Espaço</span></div>
+                <select id="actionPedalC" onchange="savePedalConfig()">
+                    <option value="play">▶ Iniciar Apresentação</option>
+                    <option value="climax">🔥 Clímax / Refrão Final</option>
+                    <option value="stop">⏹ Parar / Resetar</option>
+                </select>
+            </div>
+
+            <div class="pedal-card">
+                <div class="pedal-title"><span>PEDAL D</span><span class="pedal-key-badge">Enter</span></div>
+                <select id="actionPedalD" onchange="savePedalConfig()">
+                    <option value="stop">⏹ Parar / Resetar</option>
+                    <option value="play">▶ Iniciar Apresentação</option>
+                    <option value="climax">🔥 Clímax / Refrão Final</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="testPedalBox" class="test-box">
+            🦶 <b>TESTE DO PEDAL:</b> Pise em qualquer botão do Chocolate Plus para validar o sinal.
+        </div>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const musica = urlParams.get('musica') || 'Apresentação';
+    const cantor = urlParams.get('cantor') || 'Intérprete';
+    const stemsEncoded = urlParams.get('stems');
+
+    document.getElementById('songTitle').textContent = musica;
+    document.getElementById('songInterpreter').textContent = cantor;
+
+    const btnPlay = document.getElementById('btnPlay');
+    const btnClimax = document.getElementById('btnClimax');
+    const btnStop = document.getElementById('btnStop');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const statusDisplay = document.getElementById('statusDisplay');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const toastMessage = document.getElementById('toastMessage');
+
+    let audioCtx = null;
+    function getAudioContext() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    let bufferPart1 = null;
+    let bufferLoop = null;
+    let bufferClimax = null;
+
+    let sourcePart1 = null;
+    let sourceLoop = null;
+    let sourceClimax = null;
+
+    let gainPart1 = null;
+    let gainLoop = null;
+    let gainClimax = null;
+
+    let currentState = 'IDLE'; // IDLE, PART1, LOOPING, CLIMAX, FINISHED
+    let startTime = 0;
+    let activeDuration = 0;
+    let syncInterval = null;
+    let isClimaxArmed = false;
+
+    let pedalConfig = {
+        'pageup': 'stop',
+        'pagedown': 'climax',
+        ' ': 'play',
+        'enter': 'stop'
+    };
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        
+        if (tabId === 'playerTab') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('playerTab').classList.add('active');
+        } else {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('pedalTab').classList.add('active');
+        }
+    }
+
+    function loadConfigs() {
+        const savedPedal = localStorage.getItem('eta_apresentacao_pedal');
+        if (savedPedal) {
+            try {
+                pedalConfig = JSON.parse(savedPedal);
+                document.getElementById('actionPedalA').value = pedalConfig['pageup'] || 'stop';
+                document.getElementById('actionPedalB').value = pedalConfig['pagedown'] || 'climax';
+                document.getElementById('actionPedalC').value = pedalConfig[' '] || 'play';
+                document.getElementById('actionPedalD').value = pedalConfig['enter'] || 'stop';
+            } catch(e){}
+        }
+    }
+
+    function savePedalConfig() {
+        pedalConfig = {
+            'pageup': document.getElementById('actionPedalA').value,
+            'pagedown': document.getElementById('actionPedalB').value,
+            ' ': document.getElementById('actionPedalC').value,
+            'enter': document.getElementById('actionPedalD').value
+        };
+        localStorage.setItem('eta_apresentacao_pedal', JSON.stringify(pedalConfig));
+    }
+
+    function normalizarUrl(url) {
+        if (!url) return '';
+        let u = url.trim();
+        if (u.includes('dropbox.com')) return u.replace(/([?&])dl=[01]/, '$1dl=1');
+        if (u.includes('drive.google.com') && u.includes('/d/')) {
+            const id = u.split('/d/')[1].split('/')[0];
+            return `https://docs.google.com/uc?export=download&id=${id}`;
+        }
+        if (!u.startsWith('http')) {
+            return window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1) + u;
+        }
+        return u;
+    }
+
+    async function carregarAudioBuffer(url) {
+        const ctx = getAudioContext();
+        const res = await fetch(normalizarUrl(url));
+        if (!res.ok) throw new Error(`Falha ao buscar: ${url}`);
+        const arrayBuffer = await res.arrayBuffer();
+        return await ctx.decodeAudioData(arrayBuffer);
+    }
+
+    async function inicializarPlayer() {
+        loadConfigs();
+        if (!stemsEncoded) {
+            toastMessage.textContent = 'Nenhum áudio fornecido.';
+            return;
+        }
+
+        try {
+            const rawStems = JSON.parse(decodeURIComponent(stemsEncoded));
+            toastMessage.textContent = 'Baixando áudios da apresentação...';
+
+            // Mapeia os arquivos recebidos (Parte 1, Loop Instrumental, Clímax/Fim)
+            for (let i = 0; i < rawStems.length; i++) {
+                const item = rawStems[i];
+                const url = typeof item === 'object' ? item.url : item;
+                if (!url || url.length < 5) continue;
+
+                const urlLower = url.toLowerCase();
+                const buffer = await carregarAudioBuffer(url);
+
+                if (urlLower.includes('-loop') || urlLower.includes('loop') || i === 1) {
+                    bufferLoop = buffer;
+                } else if (urlLower.includes('-fim') || urlLower.includes('-stop') || urlLower.includes('-climax') || i >= 2) {
+                    bufferClimax = buffer;
+                } else if (i === 0) {
+                    bufferPart1 = buffer;
+                }
+            }
+
+            if (bufferPart1 || bufferLoop) {
+                btnPlay.disabled = false;
+                toastMessage.textContent = 'Pronto para apresentação!';
+            } else {
+                toastMessage.textContent = 'Erro: Nenhum áudio principal encontrado.';
+            }
+
+        } catch (err) {
+            console.error(err);
+            toastMessage.textContent = 'Erro ao decodificar áudios.';
+        }
+    }
+
+    function iniciarApresentacao() {
+        if (currentState !== 'IDLE') return;
+        solicitarWakeLock();
+
+        const ctx = getAudioContext();
+        startTime = ctx.currentTime;
+
+        if (bufferPart1) {
+            currentState = 'PART1';
+            statusDisplay.textContent = 'Parte 1';
+            activeDuration = bufferPart1.duration;
+
+            gainPart1 = ctx.createGain();
+            gainPart1.gain.value = 1;
+            gainPart1.connect(ctx.destination);
+
+            sourcePart1 = ctx.createBufferSource();
+            sourcePart1.buffer = bufferPart1;
+            sourcePart1.connect(gainPart1);
+            sourcePart1.start(0);
+
+            sourcePart1.onended = () => {
+                if (currentState === 'PART1') {
+                    entrarNoLoopInstrumental();
+                }
+            };
+        } else {
+            entrarNoLoopInstrumental();
+        }
+
+        btnPlay.disabled = true;
+        btnClimax.style.display = 'block';
+        startTimer();
+    }
+
+    function entrarNoLoopInstrumental() {
+        if (!bufferLoop) return;
+        const ctx = getAudioContext();
+        currentState = 'LOOPING';
+        statusDisplay.textContent = 'Apresentando (Loop)';
+        startTime = ctx.currentTime;
+        activeDuration = bufferLoop.duration;
+
+        gainLoop = ctx.createGain();
+        gainLoop.gain.value = 1;
+        gainLoop.connect(ctx.destination);
+
+        sourceLoop = ctx.createBufferSource();
+        sourceLoop.buffer = bufferLoop;
+        sourceLoop.loop = true;
+        sourceLoop.connect(gainLoop);
+        sourceLoop.start(0);
+    }
+
+    function dispararClimax() {
+        if (currentState !== 'LOOPING' && currentState !== 'PART1') return;
+
+        const ctx = getAudioContext();
+        currentState = 'CLIMAX';
+        statusDisplay.textContent = 'Clímax Final';
+        btnClimax.style.display = 'none';
+
+        if (bufferClimax) {
+            gainClimax = ctx.createGain();
+            gainClimax.gain.value = 1;
+            gainClimax.connect(ctx.destination);
+
+            sourceClimax = ctx.createBufferSource();
+            sourceClimax.buffer = bufferClimax;
+            sourceClimax.connect(gainClimax);
+            sourceClimax.start(0);
+
+            startTime = ctx.currentTime;
+            activeDuration = bufferClimax.duration;
+
+            // CROSSFADE SUAVE: Baixa o volume do loop/parte1 ao longo de 1.5 segundos
+            if (gainLoop) {
+                gainLoop.gain.setValueAtTime(1, ctx.currentTime);
+                gainLoop.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5);
+                setTimeout(() => { if (sourceLoop) sourceLoop.stop(); }, 1600);
+            }
+            if (gainPart1) {
+                gainPart1.gain.setValueAtTime(1, ctx.currentTime);
+                gainPart1.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5);
+                setTimeout(() => { if (sourcePart1) sourcePart1.stop(); }, 1600);
+            }
+
+            sourceClimax.onended = () => {
+                pararTudo();
+                statusDisplay.textContent = 'Finalizado';
+                toastMessage.textContent = 'Apresentação encerrada com sucesso.';
+            };
+        } else {
+            pararTudo();
+            statusDisplay.textContent = 'Finalizado';
+        }
+    }
+
+    function pararTudo() {
+        if (sourcePart1) { try { sourcePart1.stop(); } catch(e){} sourcePart1 = null; }
+        if (sourceLoop) { try { sourceLoop.stop(); } catch(e){} sourceLoop = null; }
+        if (sourceClimax) { try { sourceClimax.stop(); } catch(e){} sourceClimax = null; }
+
+        currentState = 'IDLE';
+        btnPlay.disabled = false;
+        btnClimax.style.display = 'none';
+        statusDisplay.textContent = 'Pronto';
+        progressBarFill.style.width = '0%';
+        timerDisplay.textContent = '00:00.0';
+        stopTimer();
+    }
+
+    btnPlay.addEventListener('click', iniciarApresentacao);
+    btnClimax.addEventListener('click', dispararClimax);
+    btnStop.addEventListener('click', pararTudo);
+
+    function startTimer() {
+        stopTimer();
+        syncInterval = setInterval(() => {
+            if (currentState === 'IDLE' || currentState === 'LOOPING') {
+                if (currentState === 'LOOPING') {
+                    // No loop, mostra o andamento do ciclo atual
+                    const ctx = getAudioContext();
+                    const elapsed = (ctx.currentTime - startTime) % activeDuration;
+                    const percent = (elapsed / activeDuration) * 100;
+                    progressBarFill.style.width = `${percent}%`;
+
+                    const remaining = Math.max(0, activeDuration - elapsed);
+                    const mins = Math.floor(remaining / 60).toString().padStart(2, '0');
+                    const secs = Math.floor(remaining % 60).toString().padStart(2, '0');
+                    const ms = Math.floor((remaining % 1) * 10);
+                    timerDisplay.textContent = `${mins}:${secs}.${ms}`;
+                }
+                return;
+            }
+
+            const ctx = getAudioContext();
+            const elapsed = ctx.currentTime - startTime;
+            const remaining = Math.max(0, activeDuration - elapsed);
+            const percent = Math.min(100, (elapsed / activeDuration) * 100);
+            progressBarFill.style.width = `${percent}%`;
+
+            const mins = Math.floor(remaining / 60).toString().padStart(2, '0');
+            const secs = Math.floor(remaining % 60).toString().padStart(2, '0');
+            const ms = Math.floor((remaining % 1) * 10);
+            timerDisplay.textContent = `${mins}:${secs}.${ms}`;
+        }, 50);
+    }
+
+    function stopTimer() { if (syncInterval) clearInterval(syncInterval); }
+
+    function triggerAction(actionName) {
+        switch (actionName) {
+            case 'play': if (!btnPlay.disabled) iniciarApresentacao(); break;
+            case 'climax': dispararClimax(); break;
+            case 'stop': pararTudo(); break;
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        const rawKey = e.key;
+        const key = rawKey.toLowerCase();
+
+        const testBox = document.getElementById('testPedalBox');
+        if (testBox) {
+            testBox.classList.add('active');
+            testBox.innerHTML = `✅ SINAL RECEBIDO! Tecla: <b>"${rawKey}"</b>`;
+            setTimeout(() => testBox.classList.remove('active'), 1200);
+        }
+
+        if ([' ', 'pagedown', 'pageup', 'arrowup', 'arrowdown', 'enter'].includes(key)) {
+            e.preventDefault();
+        }
+
+        if (pedalConfig[key]) {
+            triggerAction(pedalConfig[key]);
+            return;
+        }
+
+        switch (key) {
+            case ' ':
+            case 'enter': triggerAction('play'); break;
+            case 'escape': triggerAction('stop'); break;
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', inicializarPlayer);
+
+    let wakeLock = null;
+    async function solicitarWakeLock() {
+        if ('wakeLock' in navigator) {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => {});
+            } catch (err) {}
+        }
+    }
+    document.addEventListener('visibilitychange', async () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') {
+            await solicitarWakeLock();
+        }
+    });
+</script>
+</body>
+</html>
