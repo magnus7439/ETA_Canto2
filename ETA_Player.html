@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -690,6 +690,8 @@
                     media: cols[3]?.replace(/"/g, '').trim() || '',
                     tipo: (cols[4]?.replace(/"/g, '') || '').toLowerCase().trim(),
                     notes: cols[5]?.replace(/"/g, '') || '',
+                    colG: cols[6]?.replace(/"/g, '').trim() || '', // Loop / Coluna G
+                    colK: cols[10]?.replace(/"/g, '').trim() || '', // Fim / Coluna K
                     stems: (() => {
                         let extraTracks = [];
                         // 1. Coluna G (índice 6) -> Loop Principal (-loop)
@@ -770,7 +772,7 @@
                         <div class="action-buttons">
                             ${temMediaPrincipal && !ehYouTube && !ehGitHub ? `<button class="btn-github-upload" onclick="enviarItemParaGithub(this.closest('li'))" title="Enviar para o GitHub (Partitura)">🎼</button>` : ''}
                             ${temMediaPrincipal && !ehYouTube ? `<button class="btn-cache" data-url="${urlFinal}" onclick="toggleCache('${urlFinal}', this)">⬇️</button>` : ''}
-                            ${temMidiaValida ? `<button class="btn-play" onclick="tocar('${item.media.replace(/'/g, "\\'")}', '${item.cantor.replace(/'/g, "\\'")}', '${item.musica.replace(/'/g, "\\'")}', '${stemsStringEncoded}', this.closest('li'))">▶</button>` : ''}
+                            ${temMidiaValida ? `<button class="btn-play" onclick="tocar('${item.media.replace(/'/g, "\\'")}', '${item.cantor.replace(/'/g, "\\'")}', '${item.musica.replace(/'/g, "\\'")}', '${stemsStringEncoded}', this.closest('li'), '${item.tipo}')">▶</button>` : ''}
                             <button class="btn-delete-sheet" onclick="deletarItemPlanilha(this.closest('li'))" title="Excluir">🗑️</button>
                         </div>
                     `;
@@ -794,20 +796,33 @@
             atualizarStatusBotoesCache();
         }
 
-        function tocar(media, cantor, musica, stemsEncoded, elementoLi) {
+        function tocar(media, cantor, musica, stemsEncoded, elementoLi, tipo) {
             let parsedStems = [];
             try { parsedStems = JSON.parse(decodeURIComponent(stemsEncoded)); } catch(e){}
 
             const temMediaPrincipal = media && media.length > 5;
 
-            // REGRA: SE A COLUNA E ESTIVER VAZIA E HOUVER STEMS (MULTIPLAYER), ABRE A NOVA PÁGINA DEDICADA DO BTK
-            if (!temMediaPrincipal && parsedStems.length > 0) {
-                const urlMultilayer = `btk_stems.html?musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&stems=${stemsEncoded}`;
+            // 1. ROTEAMENTO PARA APRESENTAÇÃO / ENCERRAMENTO (ETA_Apresentacao.html)
+            if (tipo === 'encerramento') {
+                let itemData = dadosGlobaisPlanilha[elementoLi.dataset.id] || {};
+                let stemsApresentacao = [
+                    { name: 'Parte 1', url: media },
+                    { name: 'Loop Instrumental', url: itemData.colG || '' },
+                    { name: 'Clímax Final', url: itemData.colK || '' }
+                ];
+                const urlApresentacao = `ETA_Apresentacao.html?musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&stems=${encodeURIComponent(JSON.stringify(stemsApresentacao))}`;
+                window.location.href = urlApresentacao;
+                return;
+            }
+
+            // 2. ROTEAMENTO PARA MULTITRACK DE STEMS / LOOPS (ETA_Stems.html)
+            if (tipo === 'loop' || tipo === 'stems' || (!temMediaPrincipal && parsedStems.length > 0)) {
+                const urlMultilayer = `ETA_Stems.html?musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&stems=${stemsEncoded}`;
                 window.location.href = urlMultilayer;
                 return;
             }
 
-            // CASO CONTRÁRIO, EXECUTA O PLAYER PADRÃO (ÁUDIO OU YOUTUBE)
+            // 3. CASO CONTRÁRIO, EXECUTA O PLAYER PADRÃO (ÁUDIO OU YOUTUBE)
             const yt = document.getElementById('yt-player');
             const audioControlsGroup = document.getElementById('audio-controls-group');
             
