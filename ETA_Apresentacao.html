@@ -248,11 +248,10 @@
     let gainLoop = null;
     let gainClimax = null;
 
-    let currentState = 'IDLE'; // IDLE, PART1, LOOPING, CLIMAX, FINISHED
+    let currentState = 'IDLE'; // IDLE, MUSICA, LOOPING, CLIMAX, FINISHED
     let startTime = 0;
     let activeDuration = 0;
     let syncInterval = null;
-    let isClimaxArmed = false;
 
     let pedalConfig = {
         'pageup': 'stop',
@@ -330,7 +329,6 @@
             const rawStems = JSON.parse(decodeURIComponent(stemsEncoded));
             toastMessage.textContent = 'Baixando áudios da apresentação...';
 
-            // Mapeia os arquivos recebidos (Parte 1, Loop Instrumental, Clímax/Fim)
             for (let i = 0; i < rawStems.length; i++) {
                 const item = rawStems[i];
                 const url = typeof item === 'object' ? item.url : item;
@@ -339,12 +337,12 @@
                 const urlLower = url.toLowerCase();
                 const buffer = await carregarAudioBuffer(url);
 
-                if (urlLower.includes('-loop') || urlLower.includes('loop') || i === 1) {
+                if (i === 0) {
+                    bufferPart1 = buffer;
+                } else if (urlLower.includes('-loop') || urlLower.includes('loop') || i === 1) {
                     bufferLoop = buffer;
                 } else if (urlLower.includes('-fim') || urlLower.includes('-stop') || urlLower.includes('-climax') || i >= 2) {
                     bufferClimax = buffer;
-                } else if (i === 0) {
-                    bufferPart1 = buffer;
                 }
             }
 
@@ -369,8 +367,8 @@
         startTime = ctx.currentTime;
 
         if (bufferPart1) {
-            currentState = 'PART1';
-            statusDisplay.textContent = 'Parte 1';
+            currentState = 'MUSICA';
+            statusDisplay.textContent = 'Música';
             activeDuration = bufferPart1.duration;
 
             gainPart1 = ctx.createGain();
@@ -383,7 +381,7 @@
             sourcePart1.start(0);
 
             sourcePart1.onended = () => {
-                if (currentState === 'PART1') {
+                if (currentState === 'MUSICA') {
                     entrarNoLoopInstrumental();
                 }
             };
@@ -400,7 +398,7 @@
         if (!bufferLoop) return;
         const ctx = getAudioContext();
         currentState = 'LOOPING';
-        statusDisplay.textContent = 'Apresentando (Loop)';
+        statusDisplay.textContent = 'Loop';
         startTime = ctx.currentTime;
         activeDuration = bufferLoop.duration;
 
@@ -416,7 +414,7 @@
     }
 
     function dispararClimax() {
-        if (currentState !== 'LOOPING' && currentState !== 'PART1') return;
+        if (currentState !== 'LOOPING' && currentState !== 'MUSICA') return;
 
         const ctx = getAudioContext();
         currentState = 'CLIMAX';
@@ -436,7 +434,7 @@
             startTime = ctx.currentTime;
             activeDuration = bufferClimax.duration;
 
-            // CROSSFADE SUAVE: Baixa o volume do loop/parte1 ao longo de 1.5 segundos
+            // CROSSFADE SUAVE: Baixa o volume do loop ou da música ao longo de 1.5 segundos
             if (gainLoop) {
                 gainLoop.gain.setValueAtTime(1, ctx.currentTime);
                 gainLoop.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5);
@@ -482,7 +480,6 @@
         syncInterval = setInterval(() => {
             if (currentState === 'IDLE' || currentState === 'LOOPING') {
                 if (currentState === 'LOOPING') {
-                    // No loop, mostra o andamento do ciclo atual
                     const ctx = getAudioContext();
                     const elapsed = (ctx.currentTime - startTime) % activeDuration;
                     const percent = (elapsed / activeDuration) * 100;
