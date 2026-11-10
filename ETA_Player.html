@@ -802,7 +802,7 @@
 
             const temMediaPrincipal = media && media.length > 5;
 
-            // 1. ROTEAMENTO PARA APRESENTAÇÃO / ENCERRAMENTO (ETA_Apresentacao.html)
+            // 1. ROTEAMENTO PARA APRESENTAÇÃO / ENCERRAMENTO (Apresentacao.html)
             if (tipo === 'encerramento') {
                 let itemData = dadosGlobaisPlanilha[elementoLi.dataset.id] || {};
                 let stemsApresentacao = [
@@ -810,12 +810,12 @@
                     { name: 'Loop Instrumental', url: itemData.colG || '' },
                     { name: 'Clímax Final', url: itemData.colK || '' }
                 ];
-                const urlApresentacao = `ETA_Apresentacao.html?musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&stems=${encodeURIComponent(JSON.stringify(stemsApresentacao))}`;
+                const urlApresentacao = `Apresentacao.html?musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&stems=${encodeURIComponent(JSON.stringify(stemsApresentacao))}`;
                 window.location.href = urlApresentacao;
                 return;
             }
 
-            // 2. ROTEAMENTO PARA MULTITRACK DE STEMS / LOOPS (ETA_Stems.html)
+            // 2. ROTEAMENTO PARA MULTITRACK DE STEMS / LOOPS (Stems.html)
             if (tipo === 'loop' || tipo === 'stems' || (!temMediaPrincipal && parsedStems.length > 0)) {
                 const urlMultilayer = `ETA_Stems.html?musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&stems=${stemsEncoded}`;
                 window.location.href = urlMultilayer;
