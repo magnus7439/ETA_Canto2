@@ -802,20 +802,25 @@
 
             const temMediaPrincipal = media && media.length > 5;
 
-            // 1. ROTEAMENTO PARA APRESENTAÇÃO / ENCERRAMENTO (Apresentacao.html)
+            // 1. ROTEAMENTO PARA APRESENTAÇÃO / ENCERRAMENTO (ETA_Apresentacao.html)
             if (tipo === 'encerramento') {
                 let itemData = dadosGlobaisPlanilha[elementoLi.dataset.id] || {};
+        
+                // Mapeia os 3 áudios corretamente: 
+                // Coluna E (media) -> Parte 1 | Coluna G (colG) -> Loop | Coluna K (colK) -> Clímax Final
                 let stemsApresentacao = [
-                    { name: 'Parte 1', url: media },
+                    { name: 'Parte 1', url: media }, 
                     { name: 'Loop Instrumental', url: itemData.colG || '' },
                     { name: 'Clímax Final', url: itemData.colK || '' }
                 ];
-                const urlApresentacao = `Apresentacao.html?musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&stems=${encodeURIComponent(JSON.stringify(stemsApresentacao))}`;
+        
+                // CORRIGIDO: Aponta para 'ETA_Apresentacao.html' com o prefixo 'ETA_'
+                const urlApresentacao = `ETA_Apresentacao.html?musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&stems=${encodeURIComponent(JSON.stringify(stemsApresentacao))}`;
                 window.location.href = urlApresentacao;
                 return;
             }
 
-            // 2. ROTEAMENTO PARA MULTITRACK DE STEMS / LOOPS (Stems.html)
+            // 2. ROTEAMENTO PARA MULTITRACK DE STEMS / LOOPS (ETA_Stems.html)
             if (tipo === 'loop' || tipo === 'stems' || (!temMediaPrincipal && parsedStems.length > 0)) {
                 const urlMultilayer = `ETA_Stems.html?musica=${encodeURIComponent(musica)}&cantor=${encodeURIComponent(cantor)}&stems=${stemsEncoded}`;
                 window.location.href = urlMultilayer;
