@@ -101,7 +101,7 @@
         button:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .btn-play { background: #4caf50; color: #fff; }
-        .btn-restart { background: #2196f3; color: #fff; }
+        .btn-pause-play { background: #ff9800; color: #000; }
         .btn-climax { background: var(--ending-color); color: #fff; display: none; width: 100%; }
         .btn-climax.armed { animation: pulse 0.8s infinite alternate; background: #ff5252 !important; }
         .btn-stop { background: rgba(220, 20, 20, 0.85); color: #fff; }
@@ -174,7 +174,7 @@
         <div class="player-controls">
             <button id="btnPlay" class="btn-play" disabled>▶ INICIAR APRESENTAÇÃO</button>
             <div class="controls-row">
-                <button id="btnRestart" class="btn-restart">⏮ VOLTAR AO INÍCIO</button>
+                <button id="btnPausePlay" class="btn-pause-play" disabled>⏸ PAUSE</button>
                 <button id="btnStop" class="btn-stop">■ PARAR</button>
             </div>
             <button id="btnClimax" class="btn-climax">🔥 DISPARAR REFRÃO FINAL (CLÍMAX)</button>
@@ -195,7 +195,7 @@
                 <select id="actionPedalA" onchange="savePedalConfig()">
                     <option value="stop">⏹ Parar / Resetar</option>
                     <option value="play">▶ Iniciar Apresentação</option>
-                    <option value="restart">⏮ Voltar ao Início</option>
+                    <option value="pausePlay">⏸ Pause / Play</option>
                     <option value="climax">🔥 Clímax / Refrão Final</option>
                 </select>
             </div>
@@ -205,7 +205,7 @@
                 <select id="actionPedalB" onchange="savePedalConfig()">
                     <option value="climax">🔥 Clímax / Refrão Final</option>
                     <option value="play">▶ Iniciar Apresentação</option>
-                    <option value="restart">⏮ Voltar ao Início</option>
+                    <option value="pausePlay">⏸ Pause / Play</option>
                     <option value="stop">⏹ Parar / Resetar</option>
                 </select>
             </div>
@@ -214,7 +214,7 @@
                 <div class="pedal-title"><span>PEDAL C</span><span class="pedal-key-badge">Espaço</span></div>
                 <select id="actionPedalC" onchange="savePedalConfig()">
                     <option value="play">▶ Iniciar Apresentação</option>
-                    <option value="restart">⏮ Voltar ao Início</option>
+                    <option value="pausePlay">⏸ Pause / Play</option>
                     <option value="climax">🔥 Clímax / Refrão Final</option>
                     <option value="stop">⏹ Parar / Resetar</option>
                 </select>
@@ -223,7 +223,7 @@
             <div class="pedal-card">
                 <div class="pedal-title"><span>PEDAL D</span><span class="pedal-key-badge">Enter</span></div>
                 <select id="actionPedalD" onchange="savePedalConfig()">
-                    <option value="restart">⏮ Voltar ao Início</option>
+                    <option value="pausePlay">⏸ Pause / Play</option>
                     <option value="stop">⏹ Parar / Resetar</option>
                     <option value="play">▶ Iniciar Apresentação</option>
                     <option value="climax">🔥 Clímax / Refrão Final</option>
@@ -247,7 +247,7 @@
     document.getElementById('songInterpreter').textContent = cantor;
 
     const btnPlay = document.getElementById('btnPlay');
-    const btnRestart = document.getElementById('btnRestart');
+    const btnPausePlay = document.getElementById('btnPausePlay');
     const btnClimax = document.getElementById('btnClimax');
     const btnStop = document.getElementById('btnStop');
     const timerDisplay = document.getElementById('timerDisplay');
@@ -275,8 +275,9 @@
     let gainLoop = null;
     let gainClimax = null;
 
-    let currentState = 'IDLE'; // IDLE, MUSICA, LOOPING, CLIMAX, FINISHED
+    let currentState = 'IDLE'; // IDLE, MUSICA, LOOPING, CLIMAX, PAUSED, FINISHED
     let startTime = 0;
+    let pauseTime = 0;
     let activeDuration = 0;
     let syncInterval = null;
 
@@ -284,7 +285,7 @@
         'pageup': 'stop',
         'pagedown': 'climax',
         ' ': 'play',
-        'enter': 'restart'
+        'enter': 'pausePlay'
     };
 
     function switchTab(tabId) {
@@ -308,7 +309,7 @@
                 document.getElementById('actionPedalA').value = pedalConfig['pageup'] || 'stop';
                 document.getElementById('actionPedalB').value = pedalConfig['pagedown'] || 'climax';
                 document.getElementById('actionPedalC').value = pedalConfig[' '] || 'play';
-                document.getElementById('actionPedalD').value = pedalConfig['enter'] || 'restart';
+                document.getElementById('actionPedalD').value = pedalConfig['enter'] || 'pausePlay';
             } catch(e){}
         }
         const savedMode = localStorage.getItem('eta_apresentacao_loop_mode');
@@ -395,12 +396,25 @@
     }
 
     function iniciarApresentacao() {
-        if (currentState !== 'IDLE') {
+        if (currentState !== 'IDLE' && currentState !== 'PAUSED') {
             pararTudo();
         }
         solicitarWakeLock();
 
         const ctx = getAudioContext();
+
+        if (currentState === 'PAUSED') {
+            // Retomar após pause (resume do AudioContext)
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+            currentState = (sourceLoop ? 'LOOPING' : (sourcePart1 ? 'MUSICA' : 'CLIMAX'));
+            statusDisplay.textContent = (currentState === 'LOOPING' ? 'Loop' : (currentState === 'MUSICA' ? 'Música' : 'Clímax Final'));
+            btnPausePlay.textContent = '⏸ PAUSE';
+            startTimer();
+            return;
+        }
+
         startTime = ctx.currentTime;
 
         if (bufferPart1) {
@@ -427,8 +441,34 @@
         }
 
         btnPlay.disabled = true;
+        btnPausePlay.disabled = false;
+        btnPausePlay.textContent = '⏸ PAUSE';
         btnClimax.style.display = 'block';
         startTimer();
+    }
+
+    function alternarPausePlay() {
+        if (currentState === 'IDLE') {
+            iniciarApresentacao();
+            return;
+        }
+        
+        const ctx = getAudioContext();
+        if (currentState === 'PAUSED') {
+            // Retomar
+            iniciarApresentacao();
+        } else {
+            // Pausar (suspende o AudioContext congelando todos os buffers ativos no exato momento)
+            if (ctx.state === 'running') {
+                ctx.suspend();
+            }
+            currentState = 'PAUSED';
+            statusDisplay.textContent = 'Pausado';
+            btnPausePlay.textContent = '▶ RETOMAR';
+            stopTimer();
+            toastMessage.textContent = '⏸ Apresentação pausada';
+            setTimeout(() => { if(currentState === 'PAUSED') toastMessage.textContent = ''; }, 2000);
+        }
     }
 
     function entrarNoLoopInstrumental() {
@@ -450,7 +490,6 @@
         const mode = loopTransitionModeSelect.value;
 
         if (mode === 'crossfade') {
-            // Crossfade suave (0.8s) da música para o loop
             gainLoop.gain.setValueAtTime(0, ctx.currentTime);
             gainLoop.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.8);
             sourceLoop.start(0);
@@ -466,7 +505,6 @@
                 }, 900);
             }
         } else {
-            // Corte seco (instantâneo)
             gainLoop.gain.setValueAtTime(1, ctx.currentTime);
             if (sourcePart1) { 
                 try { sourcePart1.stop(); } catch(e){} 
@@ -477,12 +515,15 @@
     }
 
     function dispararClimax() {
-        if (currentState !== 'LOOPING' && currentState !== 'MUSICA') return;
+        if (currentState !== 'LOOPING' && currentState !== 'MUSICA' && currentState !== 'PAUSED') return;
 
         const ctx = getAudioContext();
+        if (ctx.state === 'suspended') ctx.resume();
+
         currentState = 'CLIMAX';
         statusDisplay.textContent = 'Clímax Final';
         btnClimax.style.display = 'none';
+        btnPausePlay.textContent = '⏸ PAUSE';
 
         if (bufferClimax) {
             gainClimax = ctx.createGain();
@@ -497,7 +538,6 @@
             startTime = ctx.currentTime;
             activeDuration = bufferClimax.duration;
 
-            // CROSSFADE SEMPRE SUAVE PARA O CLÍMAX (1.5 segundos)
             if (gainLoop) {
                 gainLoop.gain.setValueAtTime(1, ctx.currentTime);
                 gainLoop.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5);
@@ -520,20 +560,20 @@
         }
     }
 
-    function voltarAoInicio() {
-        pararTudo();
-        iniciarApresentacao();
-        toastMessage.textContent = '🔄 Reiniciado do início (Ensaio)';
-        setTimeout(() => { toastMessage.textContent = ''; }, 2000);
-    }
-
     function pararTudo() {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended') {
+            ctx.resume(); // Garante retomada antes do stop
+        }
+
         if (sourcePart1) { try { sourcePart1.stop(); } catch(e){} sourcePart1 = null; }
         if (sourceLoop) { try { sourceLoop.stop(); } catch(e){} sourceLoop = null; }
         if (sourceClimax) { try { sourceClimax.stop(); } catch(e){} sourceClimax = null; }
 
         currentState = 'IDLE';
         btnPlay.disabled = false;
+        btnPausePlay.disabled = true;
+        btnPausePlay.textContent = '⏸ PAUSE';
         btnClimax.style.display = 'none';
         statusDisplay.textContent = 'Pronto';
         progressBarFill.style.width = '0%';
@@ -542,26 +582,26 @@
     }
 
     btnPlay.addEventListener('click', iniciarApresentacao);
-    btnRestart.addEventListener('click', voltarAoInicio);
+    btnPausePlay.addEventListener('click', alternarPausePlay);
     btnClimax.addEventListener('click', dispararClimax);
     btnStop.addEventListener('click', pararTudo);
 
     function startTimer() {
         stopTimer();
         syncInterval = setInterval(() => {
-            if (currentState === 'IDLE' || currentState === 'LOOPING') {
-                if (currentState === 'LOOPING') {
-                    const ctx = getAudioContext();
-                    const elapsed = (ctx.currentTime - startTime) % activeDuration;
-                    const percent = (elapsed / activeDuration) * 100;
-                    progressBarFill.style.width = `${percent}%`;
+            if (currentState === 'PAUSED' || currentState === 'IDLE') return;
 
-                    const remaining = Math.max(0, activeDuration - elapsed);
-                    const mins = Math.floor(remaining / 60).toString().padStart(2, '0');
-                    const secs = Math.floor(remaining % 60).toString().padStart(2, '0');
-                    const ms = Math.floor((remaining % 1) * 10);
-                    timerDisplay.textContent = `${mins}:${secs}.${ms}`;
-                }
+            if (currentState === 'LOOPING') {
+                const ctx = getAudioContext();
+                const elapsed = (ctx.currentTime - startTime) % activeDuration;
+                const percent = (elapsed / activeDuration) * 100;
+                progressBarFill.style.width = `${percent}%`;
+
+                const remaining = Math.max(0, activeDuration - elapsed);
+                const mins = Math.floor(remaining / 60).toString().padStart(2, '0');
+                const secs = Math.floor(remaining % 60).toString().padStart(2, '0');
+                const ms = Math.floor((remaining % 1) * 10);
+                timerDisplay.textContent = `${mins}:${secs}.${ms}`;
                 return;
             }
 
@@ -583,7 +623,7 @@
     function triggerAction(actionName) {
         switch (actionName) {
             case 'play': if (!btnPlay.disabled) iniciarApresentacao(); break;
-            case 'restart': voltarAoInicio(); break;
+            case 'pausePlay': alternarPausePlay(); break;
             case 'climax': dispararClimax(); break;
             case 'stop': pararTudo(); break;
         }
