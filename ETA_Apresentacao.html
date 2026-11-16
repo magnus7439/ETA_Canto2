@@ -83,7 +83,16 @@
         .progress-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
         .progress-bar-fill { height: 100%; width: 0%; background: var(--accent-color); transition: width 0.05s linear; }
 
+        .options-bar {
+            display: flex; gap: 8px; align-items: center;
+            background: rgba(0,0,0,0.3); padding: 10px 12px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .options-bar label { font-size: 0.8rem; color: var(--subtext-color); font-weight: bold; }
+        .options-bar select { flex: 1; padding: 6px 8px; font-size: 0.8rem; }
+
         .player-controls { display: grid; grid-template-columns: 1fr; gap: 8px; }
+        .controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
         button {
             padding: 14px; font-size: 1rem; font-weight: bold;
@@ -92,7 +101,8 @@
         button:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .btn-play { background: #4caf50; color: #fff; }
-        .btn-climax { background: var(--ending-color); color: #fff; display: none; }
+        .btn-restart { background: #2196f3; color: #fff; }
+        .btn-climax { background: var(--ending-color); color: #fff; display: none; width: 100%; }
         .btn-climax.armed { animation: pulse 0.8s infinite alternate; background: #ff5252 !important; }
         .btn-stop { background: rgba(220, 20, 20, 0.85); color: #fff; }
 
@@ -153,10 +163,21 @@
             </div>
         </div>
 
+        <div class="options-bar">
+            <label for="loopTransitionMode">Transição para o Loop:</label>
+            <select id="loopTransitionMode">
+                <option value="crossfade">🔄 Crossfade Suave</option>
+                <option value="cut">✂️ Corte Seco (Direto)</option>
+            </select>
+        </div>
+
         <div class="player-controls">
             <button id="btnPlay" class="btn-play" disabled>▶ INICIAR APRESENTAÇÃO</button>
+            <div class="controls-row">
+                <button id="btnRestart" class="btn-restart">⏮ VOLTAR AO INÍCIO</button>
+                <button id="btnStop" class="btn-stop">■ PARAR</button>
+            </div>
             <button id="btnClimax" class="btn-climax">🔥 DISPARAR REFRÃO FINAL (CLÍMAX)</button>
-            <button id="btnStop" class="btn-stop">■ PARAR / RESETAR</button>
         </div>
 
         <div id="toastMessage" class="toast">Aguardando carregamento dos áudios...</div>
@@ -174,6 +195,7 @@
                 <select id="actionPedalA" onchange="savePedalConfig()">
                     <option value="stop">⏹ Parar / Resetar</option>
                     <option value="play">▶ Iniciar Apresentação</option>
+                    <option value="restart">⏮ Voltar ao Início</option>
                     <option value="climax">🔥 Clímax / Refrão Final</option>
                 </select>
             </div>
@@ -183,6 +205,7 @@
                 <select id="actionPedalB" onchange="savePedalConfig()">
                     <option value="climax">🔥 Clímax / Refrão Final</option>
                     <option value="play">▶ Iniciar Apresentação</option>
+                    <option value="restart">⏮ Voltar ao Início</option>
                     <option value="stop">⏹ Parar / Resetar</option>
                 </select>
             </div>
@@ -191,6 +214,7 @@
                 <div class="pedal-title"><span>PEDAL C</span><span class="pedal-key-badge">Espaço</span></div>
                 <select id="actionPedalC" onchange="savePedalConfig()">
                     <option value="play">▶ Iniciar Apresentação</option>
+                    <option value="restart">⏮ Voltar ao Início</option>
                     <option value="climax">🔥 Clímax / Refrão Final</option>
                     <option value="stop">⏹ Parar / Resetar</option>
                 </select>
@@ -199,6 +223,7 @@
             <div class="pedal-card">
                 <div class="pedal-title"><span>PEDAL D</span><span class="pedal-key-badge">Enter</span></div>
                 <select id="actionPedalD" onchange="savePedalConfig()">
+                    <option value="restart">⏮ Voltar ao Início</option>
                     <option value="stop">⏹ Parar / Resetar</option>
                     <option value="play">▶ Iniciar Apresentação</option>
                     <option value="climax">🔥 Clímax / Refrão Final</option>
@@ -222,12 +247,14 @@
     document.getElementById('songInterpreter').textContent = cantor;
 
     const btnPlay = document.getElementById('btnPlay');
+    const btnRestart = document.getElementById('btnRestart');
     const btnClimax = document.getElementById('btnClimax');
     const btnStop = document.getElementById('btnStop');
     const timerDisplay = document.getElementById('timerDisplay');
     const statusDisplay = document.getElementById('statusDisplay');
     const progressBarFill = document.getElementById('progressBarFill');
     const toastMessage = document.getElementById('toastMessage');
+    const loopTransitionModeSelect = document.getElementById('loopTransitionMode');
 
     let audioCtx = null;
     function getAudioContext() {
@@ -257,7 +284,7 @@
         'pageup': 'stop',
         'pagedown': 'climax',
         ' ': 'play',
-        'enter': 'stop'
+        'enter': 'restart'
     };
 
     function switchTab(tabId) {
@@ -281,8 +308,12 @@
                 document.getElementById('actionPedalA').value = pedalConfig['pageup'] || 'stop';
                 document.getElementById('actionPedalB').value = pedalConfig['pagedown'] || 'climax';
                 document.getElementById('actionPedalC').value = pedalConfig[' '] || 'play';
-                document.getElementById('actionPedalD').value = pedalConfig['enter'] || 'stop';
+                document.getElementById('actionPedalD').value = pedalConfig['enter'] || 'restart';
             } catch(e){}
+        }
+        const savedMode = localStorage.getItem('eta_apresentacao_loop_mode');
+        if (savedMode) {
+            loopTransitionModeSelect.value = savedMode;
         }
     }
 
@@ -295,6 +326,10 @@
         };
         localStorage.setItem('eta_apresentacao_pedal', JSON.stringify(pedalConfig));
     }
+
+    loopTransitionModeSelect.addEventListener('change', () => {
+        localStorage.setItem('eta_apresentacao_loop_mode', loopTransitionModeSelect.value);
+    });
 
     function normalizarUrl(url) {
         if (!url) return '';
@@ -360,7 +395,9 @@
     }
 
     function iniciarApresentacao() {
-        if (currentState !== 'IDLE') return;
+        if (currentState !== 'IDLE') {
+            pararTudo();
+        }
         solicitarWakeLock();
 
         const ctx = getAudioContext();
@@ -403,14 +440,40 @@
         activeDuration = bufferLoop.duration;
 
         gainLoop = ctx.createGain();
-        gainLoop.gain.value = 1;
         gainLoop.connect(ctx.destination);
 
         sourceLoop = ctx.createBufferSource();
         sourceLoop.buffer = bufferLoop;
         sourceLoop.loop = true;
         sourceLoop.connect(gainLoop);
-        sourceLoop.start(0);
+
+        const mode = loopTransitionModeSelect.value;
+
+        if (mode === 'crossfade') {
+            // Crossfade suave (0.8s) da música para o loop
+            gainLoop.gain.setValueAtTime(0, ctx.currentTime);
+            gainLoop.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.8);
+            sourceLoop.start(0);
+
+            if (gainPart1) {
+                gainPart1.gain.setValueAtTime(1, ctx.currentTime);
+                gainPart1.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
+                setTimeout(() => { 
+                    if (sourcePart1) { 
+                        try { sourcePart1.stop(); } catch(e){} 
+                        sourcePart1 = null; 
+                    } 
+                }, 900);
+            }
+        } else {
+            // Corte seco (instantâneo)
+            gainLoop.gain.setValueAtTime(1, ctx.currentTime);
+            if (sourcePart1) { 
+                try { sourcePart1.stop(); } catch(e){} 
+                sourcePart1 = null; 
+            }
+            sourceLoop.start(0);
+        }
     }
 
     function dispararClimax() {
@@ -434,7 +497,7 @@
             startTime = ctx.currentTime;
             activeDuration = bufferClimax.duration;
 
-            // CROSSFADE SUAVE: Baixa o volume do loop ou da música ao longo de 1.5 segundos
+            // CROSSFADE SEMPRE SUAVE PARA O CLÍMAX (1.5 segundos)
             if (gainLoop) {
                 gainLoop.gain.setValueAtTime(1, ctx.currentTime);
                 gainLoop.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5);
@@ -457,6 +520,13 @@
         }
     }
 
+    function voltarAoInicio() {
+        pararTudo();
+        iniciarApresentacao();
+        toastMessage.textContent = '🔄 Reiniciado do início (Ensaio)';
+        setTimeout(() => { toastMessage.textContent = ''; }, 2000);
+    }
+
     function pararTudo() {
         if (sourcePart1) { try { sourcePart1.stop(); } catch(e){} sourcePart1 = null; }
         if (sourceLoop) { try { sourceLoop.stop(); } catch(e){} sourceLoop = null; }
@@ -472,6 +542,7 @@
     }
 
     btnPlay.addEventListener('click', iniciarApresentacao);
+    btnRestart.addEventListener('click', voltarAoInicio);
     btnClimax.addEventListener('click', dispararClimax);
     btnStop.addEventListener('click', pararTudo);
 
@@ -512,6 +583,7 @@
     function triggerAction(actionName) {
         switch (actionName) {
             case 'play': if (!btnPlay.disabled) iniciarApresentacao(); break;
+            case 'restart': voltarAoInicio(); break;
             case 'climax': dispararClimax(); break;
             case 'stop': pararTudo(); break;
         }
