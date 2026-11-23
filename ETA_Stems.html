@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Canto ETA 🎤🎸🥁 MultiTrack</title>
+    <title>Canto ETA [🎤🎸🥁] MultiTrack</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -805,18 +805,18 @@
         }
     });
 
-    window.addEventListener('DOMContentLoaded', inicializarEstudio);
-
     // --- SUPORTE WAKE LOCK (Manter tela acesa) ---
     let wakeLock = null;
 
     async function solicitarWakeLock() {
         if ('wakeLock' in navigator) {
             try {
+                if (wakeLock && !wakeLock.released) return;
                 wakeLock = await navigator.wakeLock.request('screen');
                 console.log('Screen Wake Lock ativo: a tela não vai apagar.');
                 
                 wakeLock.addEventListener('release', () => {
+                    wakeLock = null;
                     console.log('Screen Wake Lock foi liberado.');
                 });
             } catch (err) {
@@ -825,8 +825,21 @@
         }
     }
 
+    window.addEventListener('DOMContentLoaded', () => {
+        inicializarEstudio();
+        solicitarWakeLock();
+    });
+
+    ['pointerdown', 'keydown', 'touchstart'].forEach(evt => {
+        document.addEventListener(evt, () => {
+            if (!wakeLock || wakeLock.released) {
+                solicitarWakeLock();
+            }
+        }, { passive: true });
+    });
+
     document.addEventListener('visibilitychange', async () => {
-        if (wakeLock !== null && document.visibilityState === 'visible') {
+        if (document.visibilityState === 'visible') {
             await solicitarWakeLock();
         }
     });
